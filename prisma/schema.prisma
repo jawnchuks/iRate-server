@@ -1,0 +1,179 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                          String               @id @default(uuid())
+  email                       String               @unique
+  phoneNumber                 String?              @unique
+  password                    String
+  firstName                   String?
+  lastName                    String?
+  dob                         DateTime?
+  gender                      String?
+  selfDescription             String[]             // array of words
+  valuesInOthers              String[]             // array of words
+  whoCanSeeRatings            String?              // e.g. 'everyone', 'friends', etc.
+  notificationPreferences     Json                 @default("{}")
+  onboardingComplete          Boolean              @default(false)
+  profileCompletionPercentage Int                  @default(0)
+  profilePhotos               UserPhoto[]           @relation("UserPhotos")
+  profilePictureId            String? @unique
+  profilePicture              UserPhoto?           @relation("ProfilePicture", fields: [profilePictureId], references: [id])
+  createdAt                   DateTime             @default(now())
+  updatedAt                   DateTime             @updatedAt
+  username                    String?              @unique
+  bio                         String?
+  interests                   String[]
+  location                    Json?
+  averageRating               Float                @default(0)
+  totalRatings                Int                  @default(0)
+  emailVerified               Boolean              @default(false) @map("email_verified")
+  phoneVerified               Boolean              @default(false) @map("phone_verified")
+  role                        String               @default("user")
+  givenRatings                Rating[]             @relation("RaterToRating")
+  receivedRatings             Rating[]             @relation("TargetToRating")
+  messages                    Message[]            @relation("MessageSender")
+  notifications               Notification[]
+  conversations1              Conversation[]       @relation("ConversationParticipant1")
+  conversations2              Conversation[]       @relation("ConversationParticipant2")
+  media                       Media[]
+}
+
+model VerificationOTP {
+  id          String   @id @default(uuid())
+  phoneNumber String
+  otp         String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  score     Int      @db.SmallInt
+  review    String?
+  rater     User     @relation("RaterToRating", fields: [raterId], references: [id])
+  raterId   String
+  target    User     @relation("TargetToRating", fields: [targetId], references: [id])
+  targetId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([raterId, targetId])
+  @@index([targetId])
+  @@index([raterId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  content        String
+  senderId       String
+  conversationId String
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  attachments    Attachment[]
+  reactions      Reaction[]
+  isDeleted      Boolean      @default(false)
+  deletedAt      DateTime?
+  isEdited       Boolean      @default(false)
+  editedAt       DateTime?
+  read           Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([senderId])
+  @@index([conversationId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  priority  String
+  title     String
+  message   String
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Conversation {
+  id             String       @id @default(uuid())
+  participant1Id String
+  participant2Id String
+  participant1   User         @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
+  participant2   User         @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
+  messages       Message[]
+  attachments    Attachment[] @relation("ConversationAttachments")
+  isGroup        Boolean      @default(false)
+  groupName      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([participant1Id])
+  @@index([participant2Id])
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  type      String // IMAGE, VIDEO, AUDIO
+  url       String
+  caption   String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Attachment {
+  id             String       @id @default(uuid())
+  url            String
+  type           String // image, video, file, etc.
+  name           String
+  size           Int
+  messageId      String?
+  message        Message?     @relation(fields: [messageId], references: [id])
+  conversationId String
+  conversation   Conversation @relation("ConversationAttachments", fields: [conversationId], references: [id])
+  createdAt      DateTime     @default(now())
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  emoji     String
+  userId    String
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UserPhoto {
+  id                String   @id @default(uuid())
+  url               String
+  userId            String
+  isProfilePicture  Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  user              User     @relation("UserPhotos", fields: [userId], references: [id])
+  profileOf         User?    @relation("ProfilePicture")
+}
+
+// Add any additional models as needed based on your application requirements.
