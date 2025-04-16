@@ -3,10 +3,10 @@ import {
   UnauthorizedException,
   ConflictException,
   BadRequestException,
-} from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { ConfigService } from "@nestjs/config";
-import { PrismaService } from "../../prisma/prisma.service";
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   RegisterEmailDto,
   RegisterPhoneDto,
@@ -17,16 +17,11 @@ import {
   VerifyEmailDto,
   VerifyPhoneDto,
   OnboardingDto,
-} from "../dto";
-import * as bcrypt from "bcrypt";
-import { v4 as uuidv4 } from "uuid";
-import { GoogleOAuthService } from "./google-oauth.service";
-import { EmailService } from "./email.service";
-import { PhoneService } from "./phone.service";
-
-interface Rating {
-  score: number;
-}
+} from '../dto';
+import * as bcrypt from 'bcrypt';
+import { GoogleOAuthService } from './google-oauth.service';
+import { EmailService } from './email.service';
+import { PhoneService } from './phone.service';
 
 @Injectable()
 export class AuthService {
@@ -36,7 +31,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly googleOAuthService: GoogleOAuthService,
     private readonly emailService: EmailService,
-    private readonly phoneService: PhoneService
+    private readonly phoneService: PhoneService,
   ) {}
 
   // EMAIL REGISTRATION
@@ -44,13 +39,13 @@ export class AuthService {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
-    if (existingUser) throw new ConflictException("Email already in use");
+    if (existingUser) throw new ConflictException('Email already in use');
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const user = await this.prisma.user.create({
+    await this.prisma.user.create({
       data: {
         email: dto.email,
         password: hashedPassword,
-        role: "user",
+        role: 'user',
         emailVerified: false,
         onboardingComplete: false,
       },
@@ -65,7 +60,7 @@ export class AuthService {
       },
     });
     await this.emailService.sendVerificationCode(dto.email, code);
-    return { success: true, message: "Verification code sent to email" };
+    return { success: true, message: 'Verification code sent to email' };
   }
 
   // PHONE REGISTRATION
@@ -73,27 +68,24 @@ export class AuthService {
     const existingUser = await this.prisma.user.findUnique({
       where: { phoneNumber: dto.phoneNumber },
     });
-    if (existingUser)
-      throw new ConflictException("Phone number already in use");
-    const user = await this.prisma.user.create({
+    if (existingUser) throw new ConflictException('Phone number already in use');
+    await this.prisma.user.create({
       data: {
         phoneNumber: dto.phoneNumber,
-        email: "",
-        password: "",
-        role: "user",
+        email: '',
+        password: '',
+        role: 'user',
         phoneVerified: false,
         onboardingComplete: false,
       },
     });
     await this.sendPhoneOTP(dto.phoneNumber);
-    return { success: true, message: "OTP sent to phone number" };
+    return { success: true, message: 'OTP sent to phone number' };
   }
 
   // GOOGLE REGISTRATION/LOGIN
   async registerGoogle(dto: RegisterGoogleDto) {
-    const googleUser = await this.googleOAuthService.verifyGoogleToken(
-      dto.token
-    );
+    const googleUser = await this.googleOAuthService.verifyGoogleToken(dto.token);
     let user = await this.prisma.user.findUnique({
       where: { email: googleUser.email },
     });
@@ -101,10 +93,10 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           email: googleUser.email,
-          password: "",
+          password: '',
           firstName: googleUser.firstName,
           lastName: googleUser.lastName,
-          role: "user",
+          role: 'user',
           emailVerified: true,
           onboardingComplete: false,
         },
@@ -121,12 +113,10 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
-    if (!user) throw new UnauthorizedException("Invalid credentials");
+    if (!user) throw new UnauthorizedException('Invalid credentials');
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid)
-      throw new UnauthorizedException("Invalid credentials");
-    if (!user.emailVerified)
-      throw new UnauthorizedException("Email not verified");
+    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
+    if (!user.emailVerified) throw new UnauthorizedException('Email not verified');
     return {
       success: true,
       data: { access_token: this.generateToken(user), user },
@@ -138,9 +128,8 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { phoneNumber: dto.phoneNumber },
     });
-    if (!user) throw new UnauthorizedException("Invalid credentials");
-    if (!user.phoneVerified)
-      throw new UnauthorizedException("Phone not verified");
+    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user.phoneVerified) throw new UnauthorizedException('Phone not verified');
     // OTP verification
     const otpRecord = await this.prisma.verificationOTP.findFirst({
       where: {
@@ -149,7 +138,7 @@ export class AuthService {
         expiresAt: { gt: new Date() },
       },
     });
-    if (!otpRecord) throw new UnauthorizedException("Invalid or expired OTP");
+    if (!otpRecord) throw new UnauthorizedException('Invalid or expired OTP');
     await this.prisma.verificationOTP.delete({ where: { id: otpRecord.id } });
     return {
       success: true,
@@ -159,9 +148,7 @@ export class AuthService {
 
   // GOOGLE LOGIN
   async loginGoogle(dto: LoginGoogleDto) {
-    const googleUser = await this.googleOAuthService.verifyGoogleToken(
-      dto.token
-    );
+    const googleUser = await this.googleOAuthService.verifyGoogleToken(dto.token);
     let user = await this.prisma.user.findUnique({
       where: { email: googleUser.email },
     });
@@ -169,10 +156,10 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           email: googleUser.email,
-          password: "",
+          password: '',
           firstName: googleUser.firstName,
           lastName: googleUser.lastName,
-          role: "user",
+          role: 'user',
           emailVerified: true,
           onboardingComplete: false,
         },
@@ -193,7 +180,7 @@ export class AuthService {
         expiresAt: { gt: new Date() },
       },
     });
-    if (!otpRecord) throw new UnauthorizedException("Invalid or expired code");
+    if (!otpRecord) throw new UnauthorizedException('Invalid or expired code');
     const user = await this.prisma.user.update({
       where: { email: dto.email },
       data: { emailVerified: true },
@@ -214,7 +201,7 @@ export class AuthService {
         expiresAt: { gt: new Date() },
       },
     });
-    if (!otpRecord) throw new UnauthorizedException("Invalid or expired OTP");
+    if (!otpRecord) throw new UnauthorizedException('Invalid or expired OTP');
     const user = await this.prisma.user.update({
       where: { phoneNumber: dto.phoneNumber },
       data: { phoneVerified: true },
@@ -234,16 +221,14 @@ export class AuthService {
       data: { phoneNumber, otp, expiresAt: otpExpiry },
     });
     await this.phoneService.sendOTP(phoneNumber, otp);
-    return { success: true, message: "OTP sent successfully" };
+    return { success: true, message: 'OTP sent successfully' };
   }
 
   // ONBOARDING
   async completeOnboarding(userId: string, dto: OnboardingDto) {
     // Save photos and set profile picture
     if (!dto.photos.includes(dto.profilePicture)) {
-      throw new BadRequestException(
-        "Profile picture must be one of the uploaded photos"
-      );
+      throw new BadRequestException('Profile picture must be one of the uploaded photos');
     }
     // Remove old photos
     await this.prisma.userPhoto.deleteMany({ where: { userId } });
@@ -256,8 +241,8 @@ export class AuthService {
             userId,
             isProfilePicture: url === dto.profilePicture,
           },
-        })
-      )
+        }),
+      ),
     );
     // Update user onboarding fields
     const user = await this.prisma.user.update({
@@ -302,7 +287,7 @@ export class AuthService {
         totalRatings: true,
       },
     });
-    if (!user) throw new UnauthorizedException("User not found");
+    if (!user) throw new UnauthorizedException('User not found');
     return { success: true, data: user };
   }
 

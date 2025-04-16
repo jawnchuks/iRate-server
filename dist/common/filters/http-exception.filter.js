@@ -13,12 +13,17 @@ let HttpExceptionFilter = class HttpExceptionFilter {
     catch(exception, host) {
         const ctx = host.switchToHttp();
         const response = ctx.getResponse();
-        const status = exception.getStatus();
-        const exceptionResponse = exception.getResponse();
-        const errorMessage = typeof exceptionResponse === "string"
-            ? exceptionResponse
-            : exceptionResponse.message;
-        response.status(status).json(new response_dto_1.ApiResponse(false, "", "", errorMessage));
+        if (exception instanceof common_1.HttpException) {
+            const status = exception.getStatus();
+            const exceptionResponse = exception.getResponse();
+            const errorMessage = typeof exceptionResponse === 'string'
+                ? exceptionResponse
+                : exceptionResponse.message;
+            response.status(status).json(new response_dto_1.ApiResponse(false, '', '', errorMessage));
+        }
+        else {
+            response.status(500).json(new response_dto_1.ApiResponse(false, '', '', 'Internal server error'));
+        }
     }
 };
 exports.HttpExceptionFilter = HttpExceptionFilter;

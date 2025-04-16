@@ -17,7 +17,7 @@ class LocationDto {
 }
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "Latitude coordinate",
+        description: 'Latitude coordinate',
         example: 37.7749,
         minimum: -90,
         maximum: 90,
@@ -27,7 +27,7 @@ __decorate([
 ], LocationDto.prototype, "latitude", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "Longitude coordinate",
+        description: 'Longitude coordinate',
         example: -122.4194,
         minimum: -180,
         maximum: 180,
@@ -39,32 +39,32 @@ class OnboardingDto {
 }
 exports.OnboardingDto = OnboardingDto;
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: "First name", example: "John" }),
+    (0, swagger_1.ApiProperty)({ description: 'First name', example: 'John' }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], OnboardingDto.prototype, "firstName", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: "Last name", example: "Doe" }),
+    (0, swagger_1.ApiProperty)({ description: 'Last name', example: 'Doe' }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], OnboardingDto.prototype, "lastName", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "Date of birth (YYYY-MM-DD)",
-        example: "1990-01-01",
+        description: 'Date of birth (YYYY-MM-DD)',
+        example: '1990-01-01',
     }),
     (0, class_validator_1.IsDateString)(),
     __metadata("design:type", String)
 ], OnboardingDto.prototype, "dob", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: "Gender", example: "male" }),
+    (0, swagger_1.ApiProperty)({ description: 'Gender', example: 'male' }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], OnboardingDto.prototype, "gender", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "How would you describe yourself? (min 1)",
-        example: ["adventurous", "kind"],
+        description: 'How would you describe yourself? (min 1)',
+        example: ['adventurous', 'kind'],
         type: [String],
         minItems: 1,
     }),
@@ -75,8 +75,8 @@ __decorate([
 ], OnboardingDto.prototype, "selfDescription", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "What do you value in others? (min 1)",
-        example: ["honesty", "humor"],
+        description: 'What do you value in others? (min 1)',
+        example: ['honesty', 'humor'],
         type: [String],
         minItems: 1,
     }),
@@ -87,8 +87,8 @@ __decorate([
 ], OnboardingDto.prototype, "valuesInOthers", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({
-        description: "Who should see your ratings?",
-        example: "everyone",
+        description: 'Who should see your ratings?',
+        example: 'everyone',
     }),
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
@@ -96,8 +96,8 @@ __decorate([
 ], OnboardingDto.prototype, "whoCanSeeRatings", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "Notification preferences",
-        example: ["ratings", "profile", "someone"],
+        description: 'Notification preferences',
+        example: ['ratings', 'profile', 'someone'],
         type: [String],
     }),
     (0, class_validator_1.IsArray)(),
@@ -106,8 +106,8 @@ __decorate([
 ], OnboardingDto.prototype, "notificationPreferences", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "Upload up to 4 pictures of yourself",
-        example: ["url1", "url2"],
+        description: 'Upload up to 4 pictures of yourself',
+        example: ['url1', 'url2'],
         type: [String],
         maxItems: 4,
     }),
@@ -118,15 +118,15 @@ __decorate([
 ], OnboardingDto.prototype, "photos", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "Profile picture URL (must be one of the uploaded photos)",
-        example: "url1",
+        description: 'Profile picture URL (must be one of the uploaded photos)',
+        example: 'url1',
     }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], OnboardingDto.prototype, "profilePicture", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({
-        description: "Profile completion percentage",
+        description: 'Profile completion percentage',
         example: 80,
     }),
     (0, class_validator_1.IsOptional)(),
@@ -135,8 +135,8 @@ __decorate([
 ], OnboardingDto.prototype, "profileCompletion", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "User bio (max 500 characters)",
-        example: "I love hiking and photography",
+        description: 'User bio (max 500 characters)',
+        example: 'I love hiking and photography',
         maxLength: 500,
     }),
     (0, class_validator_1.IsString)(),
@@ -145,8 +145,8 @@ __decorate([
 ], OnboardingDto.prototype, "bio", void 0);
 __decorate([
     (0, swagger_1.ApiProperty)({
-        description: "User interests (min 3)",
-        example: ["hiking", "photography", "travel"],
+        description: 'User interests (min 3)',
+        example: ['hiking', 'photography', 'travel'],
         type: [String],
         minItems: 3,
     }),
@@ -157,7 +157,7 @@ __decorate([
 ], OnboardingDto.prototype, "interests", void 0);
 __decorate([
     (0, swagger_1.ApiPropertyOptional)({
-        description: "User location coordinates",
+        description: 'User location coordinates',
         type: LocationDto,
     }),
     (0, class_validator_1.IsOptional)(),

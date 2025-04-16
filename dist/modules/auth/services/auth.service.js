@@ -65,13 +65,13 @@ let AuthService = class AuthService {
             where: { email: dto.email },
         });
         if (existingUser)
-            throw new common_1.ConflictException("Email already in use");
+            throw new common_1.ConflictException('Email already in use');
         const hashedPassword = await bcrypt.hash(dto.password, 10);
-        const user = await this.prisma.user.create({
+        await this.prisma.user.create({
             data: {
                 email: dto.email,
                 password: hashedPassword,
-                role: "user",
+                role: 'user',
                 emailVerified: false,
                 onboardingComplete: false,
             },
@@ -85,26 +85,26 @@ let AuthService = class AuthService {
             },
         });
         await this.emailService.sendVerificationCode(dto.email, code);
-        return { success: true, message: "Verification code sent to email" };
+        return { success: true, message: 'Verification code sent to email' };
     }
     async registerPhone(dto) {
         const existingUser = await this.prisma.user.findUnique({
             where: { phoneNumber: dto.phoneNumber },
         });
         if (existingUser)
-            throw new common_1.ConflictException("Phone number already in use");
-        const user = await this.prisma.user.create({
+            throw new common_1.ConflictException('Phone number already in use');
+        await this.prisma.user.create({
             data: {
                 phoneNumber: dto.phoneNumber,
-                email: "",
-                password: "",
-                role: "user",
+                email: '',
+                password: '',
+                role: 'user',
                 phoneVerified: false,
                 onboardingComplete: false,
             },
         });
         await this.sendPhoneOTP(dto.phoneNumber);
-        return { success: true, message: "OTP sent to phone number" };
+        return { success: true, message: 'OTP sent to phone number' };
     }
     async registerGoogle(dto) {
         const googleUser = await this.googleOAuthService.verifyGoogleToken(dto.token);
@@ -115,10 +115,10 @@ let AuthService = class AuthService {
             user = await this.prisma.user.create({
                 data: {
                     email: googleUser.email,
-                    password: "",
+                    password: '',
                     firstName: googleUser.firstName,
                     lastName: googleUser.lastName,
-                    role: "user",
+                    role: 'user',
                     emailVerified: true,
                     onboardingComplete: false,
                 },
@@ -134,12 +134,12 @@ let AuthService = class AuthService {
             where: { email: dto.email },
         });
         if (!user)
-            throw new common_1.UnauthorizedException("Invalid credentials");
+            throw new common_1.UnauthorizedException('Invalid credentials');
         const isPasswordValid = await bcrypt.compare(dto.password, user.password);
         if (!isPasswordValid)
-            throw new common_1.UnauthorizedException("Invalid credentials");
+            throw new common_1.UnauthorizedException('Invalid credentials');
         if (!user.emailVerified)
-            throw new common_1.UnauthorizedException("Email not verified");
+            throw new common_1.UnauthorizedException('Email not verified');
         return {
             success: true,
             data: { access_token: this.generateToken(user), user },
@@ -150,9 +150,9 @@ let AuthService = class AuthService {
             where: { phoneNumber: dto.phoneNumber },
         });
         if (!user)
-            throw new common_1.UnauthorizedException("Invalid credentials");
+            throw new common_1.UnauthorizedException('Invalid credentials');
         if (!user.phoneVerified)
-            throw new common_1.UnauthorizedException("Phone not verified");
+            throw new common_1.UnauthorizedException('Phone not verified');
         const otpRecord = await this.prisma.verificationOTP.findFirst({
             where: {
                 phoneNumber: dto.phoneNumber,
@@ -161,7 +161,7 @@ let AuthService = class AuthService {
             },
         });
         if (!otpRecord)
-            throw new common_1.UnauthorizedException("Invalid or expired OTP");
+            throw new common_1.UnauthorizedException('Invalid or expired OTP');
         await this.prisma.verificationOTP.delete({ where: { id: otpRecord.id } });
         return {
             success: true,
@@ -177,10 +177,10 @@ let AuthService = class AuthService {
             user = await this.prisma.user.create({
                 data: {
                     email: googleUser.email,
-                    password: "",
+                    password: '',
                     firstName: googleUser.firstName,
                     lastName: googleUser.lastName,
-                    role: "user",
+                    role: 'user',
                     emailVerified: true,
                     onboardingComplete: false,
                 },
@@ -200,7 +200,7 @@ let AuthService = class AuthService {
             },
         });
         if (!otpRecord)
-            throw new common_1.UnauthorizedException("Invalid or expired code");
+            throw new common_1.UnauthorizedException('Invalid or expired code');
         const user = await this.prisma.user.update({
             where: { email: dto.email },
             data: { emailVerified: true },
@@ -220,7 +220,7 @@ let AuthService = class AuthService {
             },
         });
         if (!otpRecord)
-            throw new common_1.UnauthorizedException("Invalid or expired OTP");
+            throw new common_1.UnauthorizedException('Invalid or expired OTP');
         const user = await this.prisma.user.update({
             where: { phoneNumber: dto.phoneNumber },
             data: { phoneVerified: true },
@@ -238,12 +238,12 @@ let AuthService = class AuthService {
             data: { phoneNumber, otp, expiresAt: otpExpiry },
         });
         await this.phoneService.sendOTP(phoneNumber, otp);
-        return { success: true, message: "OTP sent successfully" };
+        return { success: true, message: 'OTP sent successfully' };
     }
     async completeOnboarding(userId, dto) {
         var _a, _b;
         if (!dto.photos.includes(dto.profilePicture)) {
-            throw new common_1.BadRequestException("Profile picture must be one of the uploaded photos");
+            throw new common_1.BadRequestException('Profile picture must be one of the uploaded photos');
         }
         await this.prisma.userPhoto.deleteMany({ where: { userId } });
         const photoRecords = await Promise.all(dto.photos.map((url) => this.prisma.userPhoto.create({
@@ -295,7 +295,7 @@ let AuthService = class AuthService {
             },
         });
         if (!user)
-            throw new common_1.UnauthorizedException("User not found");
+            throw new common_1.UnauthorizedException('User not found');
         return { success: true, data: user };
     }
     generateToken(user) {

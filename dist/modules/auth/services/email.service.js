@@ -47,8 +47,7 @@ const common_1 = require("@nestjs/common");
 const nodemailer = __importStar(require("nodemailer"));
 let EmailService = class EmailService {
     constructor() {
-        this.isTest =
-            process.env.SMTP_HOST === "test" || process.env.NODE_ENV !== "production";
+        this.isTest = process.env.SMTP_HOST === 'test' || process.env.NODE_ENV !== 'production';
         if (this.isTest) {
             nodemailer.createTestAccount().then((testAccount) => {
                 this.transporter = nodemailer.createTransport({
@@ -66,7 +65,7 @@ let EmailService = class EmailService {
             this.transporter = nodemailer.createTransport({
                 host: process.env.SMTP_HOST,
                 port: Number(process.env.SMTP_PORT) || 587,
-                secure: process.env.SMTP_SECURE === "true",
+                secure: process.env.SMTP_SECURE === 'true',
                 auth: {
                     user: process.env.SMTP_USER,
                     pass: process.env.SMTP_PASS,
@@ -79,16 +78,16 @@ let EmailService = class EmailService {
             const info = await this.transporter.sendMail({
                 from: process.env.SMTP_FROM || process.env.SMTP_USER,
                 to: email,
-                subject: "Your Verification Code",
+                subject: 'Your Verification Code',
                 text: `Your verification code is: ${code}`,
                 html: `<p>Your verification code is: <b>${code}</b></p>`,
             });
             if (this.isTest) {
-                console.log("Ethereal test email URL:", nodemailer.getTestMessageUrl(info));
+                console.log('Ethereal test email URL:', nodemailer.getTestMessageUrl(info));
             }
         }
-        catch (e) {
-            throw new common_1.InternalServerErrorException("Failed to send verification email");
+        catch (_a) {
+            throw new common_1.InternalServerErrorException('Failed to send verification email');
         }
     }
 };

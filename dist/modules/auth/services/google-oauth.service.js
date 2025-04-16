@@ -21,16 +21,16 @@ let GoogleOAuthService = class GoogleOAuthService {
             });
             const payload = ticket.getPayload();
             if (!payload || !payload.email)
-                throw new common_1.UnauthorizedException("Invalid Google token");
+                throw new common_1.UnauthorizedException('Invalid Google token');
             return {
                 email: payload.email,
-                firstName: payload.given_name || "",
-                lastName: payload.family_name || "",
+                firstName: payload.given_name || '',
+                lastName: payload.family_name || '',
                 picture: payload.picture,
             };
         }
-        catch (e) {
-            throw new common_1.UnauthorizedException("Invalid Google token");
+        catch (_a) {
+            throw new common_1.UnauthorizedException('Invalid Google token');
         }
     }
 };
