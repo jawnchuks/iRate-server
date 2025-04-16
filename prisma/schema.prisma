@@ -13,6 +13,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
 model User {
   id                          String               @id @default(uuid())
   email                       String               @unique
@@ -21,11 +29,15 @@ model User {
   firstName                   String?
   lastName                    String?
   dob                         DateTime?
-  gender                      String?
+  gender                      Gender?
   selfDescription             String[]             // array of words
   valuesInOthers              String[]             // array of words
   whoCanSeeRatings            String?              // e.g. 'everyone', 'friends', etc.
   notificationPreferences     Json                 @default("{}")
+  preferences                 Json                 @default("{\"language\":\"en\",\"timezone\":\"UTC\",\"notifications\":{\"email\":true,\"push\":true,\"sms\":true}}")
+  privacy                     Json                 @default("{\"isProfilePublic\":true,\"areRatingsPublic\":true,\"isLocationPublic\":false,\"isContactPublic\":false}")
+  visibility                  Json                 @default("{\"isVisibleInSearch\":true,\"isVisibleToNearby\":true,\"isVisibleToRecommended\":true}")
+  settings                    Json                 @default("{\"theme\":\"system\",\"emailNotifications\":true,\"pushNotifications\":true,\"smsNotifications\":true}")
   onboardingComplete          Boolean              @default(false)
   profileCompletionPercentage Int                  @default(0)
   profilePhotos               UserPhoto[]           @relation("UserPhotos")
@@ -49,6 +61,13 @@ model User {
   conversations1              Conversation[]       @relation("ConversationParticipant1")
   conversations2              Conversation[]       @relation("ConversationParticipant2")
   media                       Media[]
+  isActive                    Boolean              @default(true)
+  deactivatedAt               DateTime?
+  deletedAt                   DateTime?
+  blockedUsers                BlockedUser[]        @relation("BlockerToBlocked")
+  blockedBy                   BlockedUser[]        @relation("BlockedToBlocker")
+  reports                     UserReport[]         @relation("ReporterToReported")
+  reportedBy                  UserReport[]         @relation("ReportedToReporter")
 }
 
 model VerificationOTP {
@@ -174,6 +193,35 @@ model UserPhoto {
   createdAt         DateTime @default(now())
   user              User     @relation("UserPhotos", fields: [userId], references: [id])
   profileOf         User?    @relation("ProfilePicture")
+}
+
+model BlockedUser {
+  id         String   @id @default(uuid())
+  blockerId  String
+  blockedId  String
+  reason     String?
+  createdAt  DateTime @default(now())
+  blocker    User     @relation("BlockerToBlocked", fields: [blockerId], references: [id])
+  blocked    User     @relation("BlockedToBlocker", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+model UserReport {
+  id           String   @id @default(uuid())
+  reporterId   String
+  reportedId   String
+  reason       String
+  details      String?
+  reportType   String
+  createdAt    DateTime @default(now())
+  reporter     User     @relation("ReporterToReported", fields: [reporterId], references: [id])
+  reported     User     @relation("ReportedToReporter", fields: [reportedId], references: [id])
+
+  @@index([reporterId])
+  @@index([reportedId])
 }
 
 // Add any additional models as needed based on your application requirements.

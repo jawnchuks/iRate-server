@@ -15,6 +15,7 @@ const auth_module_1 = require("../auth/auth.module");
 const chat_module_1 = require("../chat/chat.module");
 const discovery_module_1 = require("../discovery/discovery.module");
 const prisma_module_1 = require("../prisma/prisma.module");
+const users_module_1 = require("../users/users.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -26,6 +27,7 @@ exports.AppModule = AppModule = __decorate([
             chat_module_1.ChatModule,
             discovery_module_1.DiscoveryModule,
             prisma_module_1.PrismaModule,
+            users_module_1.UsersModule,
         ],
         providers: [app_service_1.AppService],
         controllers: [app_controller_1.AppController],

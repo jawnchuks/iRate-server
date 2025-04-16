@@ -8,9 +8,11 @@ import {
   ArrayMaxSize,
   ValidateNested,
   IsDateString,
+  IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Gender } from '@prisma/client';
 
 class LocationDto {
   @ApiProperty({
@@ -48,9 +50,13 @@ export class OnboardingDto {
   @IsDateString()
   dob!: string;
 
-  @ApiProperty({ description: 'Gender', example: 'male' })
-  @IsString()
-  gender!: string;
+  @ApiProperty({
+    description: 'Gender',
+    example: 'MALE',
+    enum: Gender,
+  })
+  @IsEnum(Gender)
+  gender!: Gender;
 
   @ApiProperty({
     description: 'How would you describe yourself? (min 1)',

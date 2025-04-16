@@ -13,6 +13,7 @@ exports.OnboardingDto = void 0;
 const class_validator_1 = require("class-validator");
 const class_transformer_1 = require("class-transformer");
 const swagger_1 = require("@nestjs/swagger");
+const client_1 = require("@prisma/client");
 class LocationDto {
 }
 __decorate([
@@ -57,8 +58,12 @@ __decorate([
     __metadata("design:type", String)
 ], OnboardingDto.prototype, "dob", void 0);
 __decorate([
-    (0, swagger_1.ApiProperty)({ description: 'Gender', example: 'male' }),
-    (0, class_validator_1.IsString)(),
+    (0, swagger_1.ApiProperty)({
+        description: 'Gender',
+        example: 'MALE',
+        enum: client_1.Gender,
+    }),
+    (0, class_validator_1.IsEnum)(client_1.Gender),
     __metadata("design:type", String)
 ], OnboardingDto.prototype, "gender", void 0);
 __decorate([

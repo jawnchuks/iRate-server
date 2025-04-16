@@ -264,12 +264,23 @@ let AuthService = class AuthService {
                 valuesInOthers: dto.valuesInOthers,
                 whoCanSeeRatings: dto.whoCanSeeRatings,
                 notificationPreferences: dto.notificationPreferences,
+                profilePictureId: (_a = photoRecords.find((p) => p.isProfilePicture)) === null || _a === void 0 ? void 0 : _a.id,
+                bio: dto.bio,
+                interests: dto.interests,
+                location: dto.location
+                    ? {
+                        latitude: dto.location.latitude,
+                        longitude: dto.location.longitude,
+                    }
+                    : undefined,
+                profileCompletionPercentage: (_b = dto.profileCompletion) !== null && _b !== void 0 ? _b : 100,
                 onboardingComplete: true,
-                profileCompletionPercentage: (_a = dto.profileCompletion) !== null && _a !== void 0 ? _a : 100,
-                profilePictureId: (_b = photoRecords.find((p) => p.isProfilePicture)) === null || _b === void 0 ? void 0 : _b.id,
             },
         });
-        return { success: true, data: { user } };
+        return {
+            success: true,
+            data: { access_token: this.generateToken(user), user },
+        };
     }
     async getProfile(userId) {
         const user = await this.prisma.user.findUnique({

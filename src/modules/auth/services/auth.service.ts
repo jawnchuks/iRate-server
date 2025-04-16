@@ -256,12 +256,23 @@ export class AuthService {
         valuesInOthers: dto.valuesInOthers,
         whoCanSeeRatings: dto.whoCanSeeRatings,
         notificationPreferences: dto.notificationPreferences,
-        onboardingComplete: true,
-        profileCompletionPercentage: dto.profileCompletion ?? 100,
         profilePictureId: photoRecords.find((p) => p.isProfilePicture)?.id,
+        bio: dto.bio,
+        interests: dto.interests,
+        location: dto.location
+          ? {
+              latitude: dto.location.latitude,
+              longitude: dto.location.longitude,
+            }
+          : undefined,
+        profileCompletionPercentage: dto.profileCompletion ?? 100,
+        onboardingComplete: true,
       },
     });
-    return { success: true, data: { user } };
+    return {
+      success: true,
+      data: { access_token: this.generateToken(user), user },
+    };
   }
 
   async getProfile(userId: string) {
