@@ -21,6 +21,54 @@ import { Prisma } from '@prisma/client';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private nullToUndefined<T>(value: T | null): T | undefined {
+    return value === null ? undefined : value;
+  }
+
+  private transformUser(
+    user: Prisma.UserGetPayload<{
+      include: {
+        profilePhotos: true;
+        profilePicture: true;
+        givenRatings: true;
+        receivedRatings: true;
+      };
+    }>,
+  ): UserProfile {
+    return {
+      ...user,
+      email: this.nullToUndefined(user.email),
+      phoneNumber: this.nullToUndefined(user.phoneNumber),
+      firstName: this.nullToUndefined(user.firstName),
+      lastName: this.nullToUndefined(user.lastName),
+      preferences: this.parseJsonField<UserPreferences>(user.preferences),
+      privacy: this.parseJsonField<UserPrivacy>(user.privacy),
+      visibility: this.parseJsonField<UserVisibility>(user.visibility),
+      settings: this.parseJsonField<UserSettings>(user.settings),
+    };
+  }
+
+  private transformPartialUser(user: {
+    email: string | null;
+    phoneNumber: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    preferences: Prisma.JsonValue;
+    privacy: Prisma.JsonValue;
+    visibility: Prisma.JsonValue;
+  }): Partial<UserProfile> {
+    return {
+      ...user,
+      email: this.nullToUndefined(user.email),
+      phoneNumber: this.nullToUndefined(user.phoneNumber),
+      firstName: this.nullToUndefined(user.firstName),
+      lastName: this.nullToUndefined(user.lastName),
+      preferences: this.parseJsonField<UserPreferences>(user.preferences),
+      privacy: this.parseJsonField<UserPrivacy>(user.privacy),
+      visibility: this.parseJsonField<UserVisibility>(user.visibility),
+    };
+  }
+
   async getProfile(userId: string): Promise<UserProfile> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -32,14 +80,7 @@ export class UsersService {
       },
     });
     if (!user) throw new NotFoundException('User not found');
-
-    return {
-      ...user,
-      preferences: this.parseJsonField<UserPreferences>(user.preferences),
-      privacy: this.parseJsonField<UserPrivacy>(user.privacy),
-      visibility: this.parseJsonField<UserVisibility>(user.visibility),
-      settings: this.parseJsonField<UserSettings>(user.settings),
-    };
+    return this.transformUser(user);
   }
 
   async getPublicProfile(userId: string): Promise<UserProfile> {
@@ -65,14 +106,7 @@ export class UsersService {
       },
     });
     if (!user) throw new NotFoundException('User not found');
-
-    return {
-      ...user,
-      preferences: this.parseJsonField<UserPreferences>(user.preferences),
-      privacy: this.parseJsonField<UserPrivacy>(user.privacy),
-      visibility: this.parseJsonField<UserVisibility>(user.visibility),
-      settings: this.parseJsonField<UserSettings>(user.settings),
-    };
+    return this.transformUser(user);
   }
 
   async isUserBlocked(userId: string, otherUserId: string): Promise<boolean> {
@@ -104,14 +138,7 @@ export class UsersService {
         receivedRatings: true,
       },
     });
-
-    return {
-      ...user,
-      preferences: this.parseJsonField<UserPreferences>(user.preferences),
-      privacy: this.parseJsonField<UserPrivacy>(user.privacy),
-      visibility: this.parseJsonField<UserVisibility>(user.visibility),
-      settings: this.parseJsonField<UserSettings>(user.settings),
-    };
+    return this.transformUser(user);
   }
 
   async updatePreferences(userId: string, dto: UserPreferencesDto): Promise<UserProfile> {
@@ -133,14 +160,7 @@ export class UsersService {
         receivedRatings: true,
       },
     });
-
-    return {
-      ...user,
-      preferences: this.parseJsonField<UserPreferences>(user.preferences),
-      privacy: this.parseJsonField<UserPrivacy>(user.privacy),
-      visibility: this.parseJsonField<UserVisibility>(user.visibility),
-      settings: this.parseJsonField<UserSettings>(user.settings),
-    };
+    return this.transformUser(user);
   }
 
   async uploadPhoto(userId: string, file: Express.Multer.File): Promise<UserProfile> {
@@ -162,14 +182,7 @@ export class UsersService {
         receivedRatings: true,
       },
     });
-
-    return {
-      ...user,
-      preferences: this.parseJsonField<UserPreferences>(user.preferences),
-      privacy: this.parseJsonField<UserPrivacy>(user.privacy),
-      visibility: this.parseJsonField<UserVisibility>(user.visibility),
-      settings: this.parseJsonField<UserSettings>(user.settings),
-    };
+    return this.transformUser(user);
   }
 
   async deletePhoto(userId: string, photoId: string) {
@@ -470,14 +483,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    const userProfile: Partial<UserProfile> = {
-      ...user,
-      preferences:
-        this.parseJsonField<UserPreferences>(user.preferences) ?? this.getDefaultPreferences(),
-      privacy: this.parseJsonField<UserPrivacy>(user.privacy) ?? this.getDefaultPrivacy(),
-      visibility:
-        this.parseJsonField<UserVisibility>(user.visibility) ?? this.getDefaultVisibility(),
-    };
+    const userProfile = this.transformPartialUser(user);
 
     const completion = {
       basicInfo: this.calculateBasicInfoCompletion(userProfile),
@@ -514,14 +520,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    const userProfile: Partial<UserProfile> = {
-      ...user,
-      preferences:
-        this.parseJsonField<UserPreferences>(user.preferences) ?? this.getDefaultPreferences(),
-      privacy: this.parseJsonField<UserPrivacy>(user.privacy) ?? this.getDefaultPrivacy(),
-      visibility:
-        this.parseJsonField<UserVisibility>(user.visibility) ?? this.getDefaultVisibility(),
-    };
+    const userProfile = this.transformPartialUser(user);
 
     return {
       basicInfo: this.getBasicInfoRequirements(userProfile),

@@ -1,39 +1,39 @@
-import { Module } from "@nestjs/common";
-import { PassportModule } from "@nestjs/passport";
-import { JwtModule } from "@nestjs/jwt";
-import { ConfigModule, ConfigService } from "@nestjs/config";
-import { AuthController } from "./controllers";
-import { AuthService } from "./services";
-import { JwtStrategy } from "./strategies";
-import { PrismaModule } from "../prisma/prisma.module";
-import { GoogleOAuthService } from "./services/google-oauth.service";
-import { EmailService } from "./services/email.service";
-import { PhoneService } from "./services/phone.service";
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { AuthController } from './controllers/auth.controller';
+import { AuthService } from './services/auth.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { RolesGuard } from './guards/roles.guard';
+import { GoogleOAuthService } from './services/google-oauth.service';
+import { EmailService } from './services/email.service';
+import { PhoneService } from './services/phone.service';
+import { PrismaModule } from 'src/prisma/prisma.module';
+import { CloudinaryService } from 'src/common/utils/cloudinary';
 
 @Module({
   imports: [
     ConfigModule,
-    PassportModule.register({ defaultStrategy: "jwt" }),
+    PrismaModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get("JWT_SECRET"),
-        signOptions: {
-          expiresIn: configService.get("JWT_EXPIRES_IN", "1d"),
-        },
+        secret: configService.get('JWT_SECRET'),
+        signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],
     }),
-    PrismaModule,
   ],
   controllers: [AuthController],
   providers: [
     AuthService,
     JwtStrategy,
+    RolesGuard,
     GoogleOAuthService,
     EmailService,
     PhoneService,
+    CloudinaryService,
   ],
-  exports: [AuthService, JwtStrategy, PassportModule],
+  exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}
