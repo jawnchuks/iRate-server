@@ -1,9 +1,13 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
+  private readonly maxRetries = 5;
+  private readonly retryDelay = 5000; // 5 seconds
+
   constructor(private configService: ConfigService) {
     super({
       datasources: {
@@ -11,16 +15,31 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           url: configService.get('database.url'),
         },
       },
+      log: ['error', 'warn'],
     });
   }
 
   async onModuleInit() {
-    try {
-      await this.$connect();
-      console.log('✅ Database connection established');
-    } catch (error) {
-      console.error('❌ Database connection failed:', error);
-      throw error;
+    let retries = 0;
+    while (retries < this.maxRetries) {
+      try {
+        await this.$connect();
+        this.logger.log('✅ Database connection established');
+        return;
+      } catch (error) {
+        retries++;
+        this.logger.error(
+          `❌ Database connection attempt ${retries}/${this.maxRetries} failed:`,
+          error instanceof Error ? error.message : String(error),
+        );
+
+        if (retries === this.maxRetries) {
+          throw error;
+        }
+
+        this.logger.log(`Retrying in ${this.retryDelay / 1000} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
+      }
     }
   }
 
