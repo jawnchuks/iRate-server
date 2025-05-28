@@ -191,8 +191,8 @@ export class AuthController {
       },
     },
   })
-  async logout(@Body() dto: LogoutDto) {
-    return this.authService.logout(dto);
+  async logout() {
+    return this.authService.logout();
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
