@@ -19,12 +19,20 @@ export default registerAs('database', () => {
   const maskedUrl = databaseUrl.replace(/(:\/\/[^:]+:)([^@]+)@/, '$1****@');
   console.log('Database URL:', maskedUrl);
 
+  // Extract connection details from URL
+  const url = new URL(databaseUrl);
+  const host = url.hostname;
+  const port = parseInt(url.port || '5432', 10);
+  const username = url.username;
+  const password = url.password;
+  const database = url.pathname.substring(1); // Remove leading slash
+
   return {
     url: databaseUrl,
-    host: process.env.PGHOST,
-    port: parseInt(process.env.PGPORT || '5432', 10),
-    username: process.env.PGUSER,
-    password: process.env.PGPASSWORD,
-    database: process.env.PGDATABASE,
+    host,
+    port,
+    username,
+    password,
+    database,
   };
 });
