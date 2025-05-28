@@ -25,7 +25,7 @@ export default registerAs('database', () => {
   const port = parseInt(url.port || '5432', 10);
   const username = url.username;
   const password = url.password;
-  const database = url.pathname.substring(1); // Remove leading slash
+  const database = url.pathname.substring(1);
 
   return {
     url: databaseUrl,
