@@ -35,11 +35,9 @@ export default registerAs('database', () => {
     database,
   });
 
-  // Ensure we're using the correct URL format
-  const formattedUrl = `postgresql://${username}:${password}@${host}:${port}/${database}?sslmode=require`;
-
+  // Use the original database URL as is
   return {
-    url: formattedUrl,
+    url: databaseUrl,
     host,
     port,
     username,
