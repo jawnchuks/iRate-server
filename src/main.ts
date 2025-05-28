@@ -8,9 +8,10 @@ async function bootstrap() {
   try {
     console.log('Starting application...');
     console.log('Environment:', process.env.NODE_ENV);
+    console.log('Database URL:', process.env.DATABASE_URL ? 'Configured' : 'Not configured');
 
     const app = await NestFactory.create(AppModule, {
-      logger: ['error', 'warn', 'log'],
+      logger: ['error', 'warn', 'log', 'debug', 'verbose'],
       bodyParser: true,
     });
 
@@ -32,11 +33,13 @@ async function bootstrap() {
 
     const port = process.env.PORT || 9000;
     const host = process.env.HOST || '0.0.0.0';
+
+    console.log(`Attempting to start server on ${host}:${port}`);
     await app.listen(port, host);
 
     const apiUrl = process.env.API_URL || `http://localhost:${port}`;
-    console.log(`Application is running on: ${apiUrl}`);
-    console.log(`Swagger documentation is available at: ${apiUrl}/api`);
+    console.log(`✅ Application is running on: ${apiUrl}`);
+    console.log(`📚 Swagger documentation is available at: ${apiUrl}/api`);
 
     // Handle graceful shutdown
     const signals = ['SIGTERM', 'SIGINT'];
@@ -48,7 +51,7 @@ async function bootstrap() {
       });
     });
   } catch (error) {
-    console.error('Failed to start application:', error);
+    console.error('❌ Failed to start application:', error);
     process.exit(1);
   }
 }
