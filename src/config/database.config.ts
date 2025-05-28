@@ -27,8 +27,19 @@ export default registerAs('database', () => {
   const password = url.password;
   const database = url.pathname.substring(1);
 
+  // Log connection details (without sensitive info)
+  console.log('Database connection details:', {
+    host,
+    port,
+    username,
+    database,
+  });
+
+  // Ensure we're using the correct URL format
+  const formattedUrl = `postgresql://${username}:${password}@${host}:${port}/${database}?sslmode=require`;
+
   return {
-    url: databaseUrl,
+    url: formattedUrl,
     host,
     port,
     username,

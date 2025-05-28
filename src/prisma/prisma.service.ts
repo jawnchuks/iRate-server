@@ -24,12 +24,13 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     while (retries < this.maxRetries) {
       try {
         this.logger.log('Attempting to connect to database...');
-        this.logger.log(
-          'Database URL:',
-          this.configService.get('database.url')?.replace(/(:\/\/[^:]+:)([^@]+)@/, '$1****@'),
-        );
+        const dbUrl = this.configService.get('database.url');
+        this.logger.log('Database URL:', dbUrl?.replace(/(:\/\/[^:]+:)([^@]+)@/, '$1****@'));
         this.logger.log('Environment:', process.env.NODE_ENV);
-        this.logger.log('Host:', process.env.RAILWAY_PRIVATE_DOMAIN || 'Not set');
+
+        // Extract host from database URL
+        const url = new URL(dbUrl);
+        this.logger.log('Host:', url.hostname);
 
         await this.$connect();
         this.logger.log('✅ Database connection established');
