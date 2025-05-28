@@ -30,10 +30,13 @@ async function bootstrap() {
     // CORS
     app.enableCors();
 
-    const port = process.env.PORT || 3000;
-    await app.listen(port);
-    console.log(`Application is running on: http://localhost:${port}`);
-    console.log(`Swagger documentation is available at: http://localhost:${port}/api`);
+    const port = process.env.PORT || 9000;
+    const host = process.env.HOST || '0.0.0.0';
+    await app.listen(port, host);
+
+    const apiUrl = process.env.API_URL || `http://localhost:${port}`;
+    console.log(`Application is running on: ${apiUrl}`);
+    console.log(`Swagger documentation is available at: ${apiUrl}/api`);
 
     // Handle graceful shutdown
     const signals = ['SIGTERM', 'SIGINT'];
