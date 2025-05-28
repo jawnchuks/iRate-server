@@ -21,11 +21,17 @@ enum Gender {
   PREFER_NOT_TO_SAY
 }
 
+enum UserRole {
+  USER
+  CREATOR
+  AFFILIATE
+}
+
 model User {
   id                          String               @id @default(uuid())
-  email                       String               @unique
+  email                       String?              @unique
   phoneNumber                 String?              @unique
-  password                    String
+  password                    String?              // Made optional since we use OTP
   firstName                   String?
   lastName                    String?
   dob                         DateTime?
@@ -53,7 +59,7 @@ model User {
   totalRatings                Int                  @default(0)
   emailVerified               Boolean              @default(false) @map("email_verified")
   phoneVerified               Boolean              @default(false) @map("phone_verified")
-  role                        String               @default("user")
+  roles                       UserRole[]           @default([USER])
   givenRatings                Rating[]             @relation("RaterToRating")
   receivedRatings             Rating[]             @relation("TargetToRating")
   messages                    Message[]            @relation("MessageSender")

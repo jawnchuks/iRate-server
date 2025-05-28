@@ -1,4 +1,4 @@
-import { Gender, UserPhoto, Prisma } from '@prisma/client';
+import { Gender, UserPhoto, Prisma, UserRole } from '@prisma/client';
 
 export interface JwtPayload {
   sub: string;
@@ -6,8 +6,10 @@ export interface JwtPayload {
 }
 
 export interface CurrentUser {
+  sub: string;
   userId: string;
-  email: string;
+  email: string | null;
+  roles: UserRole[];
 }
 
 export type UserProfile = {

@@ -1,98 +1,245 @@
-import { Controller, Post, Body, Get, UseGuards, Req, HttpStatus } from '@nestjs/common';
-import { AuthService } from '../services';
-import { JwtAuthGuard } from '../../../common/guards';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import {
-  RegisterEmailDto,
-  RegisterPhoneDto,
-  RegisterGoogleDto,
-  LoginEmailDto,
-  LoginPhoneDto,
-  LoginGoogleDto,
-  VerifyEmailDto,
-  VerifyPhoneDto,
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Req,
+  HttpStatus,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
+import { AuthService } from '../services/auth.service';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
+import {
   OnboardingDto,
-} from '../dto';
+  InitiateAuthDto,
+  VerifyOtpDto,
+  UploadPhotoDto,
+  RefreshTokenDto,
+  LogoutDto,
+} from '../dto/auth.dto';
 import { Request } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { RolesGuard } from '../guards/roles.guard';
+import { Roles, UserRole } from '../decorators/roles.decorator';
+import { CurrentUser } from '../../../common/types/user.types';
 
-@ApiTags('Authentication')
+interface RequestWithUser extends Request {
+  user: CurrentUser;
+}
+
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Post('register/email')
-  @ApiOperation({ summary: 'Register with email' })
-  @ApiBody({ type: RegisterEmailDto })
-  async registerEmail(@Body() dto: RegisterEmailDto) {
-    return this.authService.registerEmail(dto);
+  @Post('initiate')
+  @ApiOperation({
+    summary: 'Initiate authentication',
+    description:
+      'Start the authentication process using email, phone number, or Google OAuth token. This will send an OTP if using email or phone.',
+  })
+  @ApiBody({ type: InitiateAuthDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Authentication initiated successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: {
+          type: 'string',
+          example: 'OTP sent to email',
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'Invalid input data',
+  })
+  async initiateAuth(@Body() dto: InitiateAuthDto) {
+    return this.authService.initiateAuth(dto);
   }
 
-  @Post('register/phone')
-  @ApiOperation({ summary: 'Register with phone number' })
-  @ApiBody({ type: RegisterPhoneDto })
-  async registerPhone(@Body() dto: RegisterPhoneDto) {
-    return this.authService.registerPhone(dto);
+  @Post('verify')
+  @ApiOperation({
+    summary: 'Verify OTP',
+    description:
+      'Verify the OTP received via email or phone to complete the authentication process.',
+  })
+  @ApiBody({ type: VerifyOtpDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'OTP verified successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        user: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            email: { type: 'string' },
+          },
+        },
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid OTP',
+  })
+  async verifyOtp(@Body() dto: VerifyOtpDto) {
+    return this.authService.verifyOtp(dto);
   }
 
-  @Post('register/google')
-  @ApiOperation({ summary: 'Register with Google' })
-  @ApiBody({ type: RegisterGoogleDto })
-  async registerGoogle(@Body() dto: RegisterGoogleDto) {
-    return this.authService.registerGoogle(dto);
-  }
-
-  @Post('login/email')
-  @ApiOperation({ summary: 'Login with email' })
-  @ApiBody({ type: LoginEmailDto })
-  async loginEmail(@Body() dto: LoginEmailDto) {
-    return this.authService.loginEmail(dto);
-  }
-
-  @Post('login/phone')
-  @ApiOperation({ summary: 'Login with phone number and OTP' })
-  @ApiBody({ type: LoginPhoneDto })
-  async loginPhone(@Body() dto: LoginPhoneDto) {
-    return this.authService.loginPhone(dto);
-  }
-
-  @Post('login/google')
-  @ApiOperation({ summary: 'Login with Google' })
-  @ApiBody({ type: LoginGoogleDto })
-  async loginGoogle(@Body() dto: LoginGoogleDto) {
-    return this.authService.loginGoogle(dto);
-  }
-
-  @Post('verify/email')
-  @ApiOperation({ summary: 'Verify email with code' })
-  @ApiBody({ type: VerifyEmailDto })
-  async verifyEmail(@Body() dto: VerifyEmailDto) {
-    return this.authService.verifyEmail(dto);
-  }
-
-  @Post('verify/phone')
-  @ApiOperation({ summary: 'Verify phone with OTP' })
-  @ApiBody({ type: VerifyPhoneDto })
-  async verifyPhone(@Body() dto: VerifyPhoneDto) {
-    return this.authService.verifyPhone(dto);
-  }
-
-  @Post('onboarding')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Complete user onboarding' })
+  @Post('onboarding')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Complete user onboarding',
+    description: 'Complete the user onboarding process by providing required profile information.',
+  })
   @ApiBody({ type: OnboardingDto })
-  async completeOnboarding(@Req() req: Request, @Body() dto: OnboardingDto) {
-    return this.authService.completeOnboarding((req.user as { userId: string }).userId, dto);
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Onboarding completed successfully',
+    type: OnboardingDto,
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'User not authenticated',
+  })
+  async completeOnboarding(@Req() req: RequestWithUser, @Body() dto: OnboardingDto) {
+    return this.authService.completeOnboarding(req.user.sub, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('upload-photo')
+  @ApiBearerAuth()
+  @UseInterceptors(FileInterceptor('photo'))
+  @ApiOperation({
+    summary: 'Upload user photo',
+    description: "Upload a photo for the user's profile. The photo will be processed and stored.",
+  })
+  @ApiBody({ type: UploadPhotoDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Photo uploaded successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        url: { type: 'string' },
+        userId: { type: 'string' },
+        isProfilePicture: { type: 'boolean' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'User not authenticated',
+  })
+  async uploadPhoto(@Req() req: RequestWithUser, @UploadedFile() file: Express.Multer.File) {
+    const dto: UploadPhotoDto = {
+      photoUrl: file.path,
+    };
+    return this.authService.uploadPhoto(req?.user?.sub, dto);
+  }
+
+  @Post('refresh')
+  @ApiOperation({
+    summary: 'Refresh access token',
+    description: 'Get a new access token using a valid refresh token.',
+  })
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Token refreshed successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        accessToken: { type: 'string' },
+        refreshToken: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Invalid refresh token',
+  })
+  async refreshToken(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto);
+  }
+
+  @Post('logout')
+  @ApiOperation({
+    summary: 'Logout user',
+    description: "Invalidate the user's refresh token and log them out.",
+  })
+  @ApiBody({ type: LogoutDto })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Logged out successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string', example: 'Logged out successfully' },
+      },
+    },
+  })
+  async logout(@Body() dto: LogoutDto) {
+    return this.authService.logout(dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  @Post('become-creator')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Become a creator',
+    description: 'Upgrade user account to creator status. Only available to regular users.',
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Successfully upgraded to creator',
+    schema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        roles: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  })
+  @ApiResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'User not authenticated',
+  })
+  @ApiResponse({
+    status: HttpStatus.FORBIDDEN,
+    description: 'User already has creator role or is an affiliate',
+  })
+  async becomeCreator(@Req() req: RequestWithUser) {
+    return this.authService.becomeCreator(req.user.sub);
   }
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Get user profile' })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get user profile',
+    description: "Retrieve the authenticated user's profile information.",
+  })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Profile retrieved successfully',
     schema: {
+      type: 'object',
       properties: {
-        success: { type: 'boolean', example: true },
+        success: { type: 'boolean' },
         data: {
           type: 'object',
           properties: {
@@ -118,15 +265,9 @@ export class AuthController {
   })
   @ApiResponse({
     status: HttpStatus.UNAUTHORIZED,
-    description: 'Unauthorized',
-    schema: {
-      properties: {
-        success: { type: 'boolean', example: false },
-        error: { type: 'string' },
-      },
-    },
+    description: 'User not authenticated',
   })
-  async getProfile(@Req() req: Request) {
-    return this.authService.getProfile((req.user as { userId: string }).userId);
+  async getProfile(@Req() req: RequestWithUser) {
+    return this.authService.getProfile(req.user.sub);
   }
 }
