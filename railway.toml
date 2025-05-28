@@ -3,10 +3,7 @@ builder = "nixpacks"
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npx prisma migrate deploy && npm run start:prod"
-healthcheckPath = "/"
-healthcheckTimeout = 300
-startupTimeout = 300
+startCommand = "npm run start:prod"
 
 
 [deploy.env]
