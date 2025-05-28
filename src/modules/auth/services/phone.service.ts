@@ -14,11 +14,6 @@ export class PhoneService {
   }
 
   private initializeTwilio() {
-    if (this.isDev) {
-      console.log('📱 Running in development mode - SMS will be logged to console');
-      return;
-    }
-
     const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
     const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
     const fromNumber = this.configService.get<string>('TWILIO_PHONE_NUMBER');
@@ -28,8 +23,15 @@ export class PhoneService {
       return;
     }
 
-    this.fromNumber = fromNumber;
-    this.twilioClient = twilio(accountSid, authToken);
+    try {
+      this.fromNumber = fromNumber;
+      this.twilioClient = twilio(accountSid, authToken);
+      console.log('✅ Twilio client initialized successfully');
+    } catch (error) {
+      console.error('❌ Failed to initialize Twilio client:', error);
+      this.twilioClient = null;
+      this.fromNumber = null;
+    }
   }
 
   async sendOtp(phoneNumber: string, otp: string): Promise<void> {
@@ -40,7 +42,10 @@ export class PhoneService {
     }
 
     if (!this.twilioClient || !this.fromNumber) {
-      throw new BadRequestException('SMS service is not configured');
+      console.warn('⚠️ SMS service not available - logging OTP instead');
+      console.log('📱 SMS would be sent to:', phoneNumber);
+      console.log('🔑 OTP Code:', otp);
+      return;
     }
 
     try {

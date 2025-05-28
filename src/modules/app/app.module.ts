@@ -7,7 +7,7 @@ import { ChatModule } from '../chat/chat.module';
 import { DiscoveryModule } from '../discovery/discovery.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { UsersModule } from '../users/users.module';
-import { HealthModule } from '../health/health.module';
+
 // Import other modules as needed
 
 @Module({
@@ -18,7 +18,7 @@ import { HealthModule } from '../health/health.module';
     DiscoveryModule,
     PrismaModule,
     UsersModule,
-    HealthModule,
+
     // Add other modules here
   ],
   providers: [AppService],
