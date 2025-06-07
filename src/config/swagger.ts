@@ -28,7 +28,7 @@ export const swaggerConfig = new DocumentBuilder()
   )
   .addServer('http://localhost:9000', 'Local Development')
   .addServer('https://api.irate.com', 'Production')
-  .addServer('https://staging-api.irate.com', 'Staging')
+  .addServer('https://irate-server-production.up.railway.app/api', 'Staging')
   .build();
 
 export const swaggerCustomOptions: SwaggerCustomOptions = {
