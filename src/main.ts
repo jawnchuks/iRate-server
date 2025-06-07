@@ -1,8 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule } from '@nestjs/swagger';
-import { swaggerConfig } from './config/swagger';
+import { swaggerConfig, swaggerCustomOptions } from './config/swagger';
 import { AppModule } from './modules/app/app.module';
+import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -39,12 +40,24 @@ async function bootstrap() {
       }),
     );
 
+    // Global interceptors
+    app.useGlobalInterceptors(new TransformInterceptor());
+
+    // CORS configuration
+    app.enableCors({
+      origin: true,
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      credentials: true,
+    });
+
     // Swagger setup
     const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api', app, document);
-
-    // CORS
-    app.enableCors();
+    SwaggerModule.setup('api', app, document, {
+      ...swaggerCustomOptions,
+      customCss: '.swagger-ui .topbar { display: none }',
+      customJs: undefined, // Remove custom JS for now
+      customfavIcon: undefined, // Remove custom favicon for now
+    });
 
     const port = process.env.PORT || 9000;
     const host = process.env.HOST || '0.0.0.0';

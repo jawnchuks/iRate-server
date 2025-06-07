@@ -123,39 +123,11 @@ export class OnboardingDto {
   })
   @IsString()
   visibility!: string;
-
-  @ApiPropertyOptional({
-    description: "Array of photo URLs for the user's profile",
-    example: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
-    type: [String],
-  })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  photos?: string[];
-}
-
-export class UploadPhotoDto {
-  @ApiProperty({
-    description: 'URL of the uploaded photo',
-    example: 'https://example.com/photo.jpg',
-  })
-  @IsString()
-  photoUrl!: string;
 }
 
 export class RefreshTokenDto {
   @ApiProperty({
     description: 'Refresh token for obtaining a new access token',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  @IsString()
-  refreshToken!: string;
-}
-
-export class LogoutDto {
-  @ApiProperty({
-    description: 'Refresh token to invalidate',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
   @IsString()

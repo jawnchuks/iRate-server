@@ -4,226 +4,298 @@ import {
   Body,
   Get,
   UseGuards,
-  Req,
   HttpStatus,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { AuthService } from '../services/auth.service';
-import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
-import {
-  OnboardingDto,
-  InitiateAuthDto,
-  VerifyOtpDto,
-  UploadPhotoDto,
-  RefreshTokenDto,
-  LogoutDto,
-} from '../dto/auth.dto';
-import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { AuthService } from '../services/auth.service';
+import { UserService } from '../../users/services/user.service';
+import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles, UserRole } from '../decorators/roles.decorator';
-import { CurrentUser } from '../../../common/types/user.types';
-
-interface RequestWithUser extends Request {
-  user: CurrentUser;
-}
+import { OnboardingDto, InitiateAuthDto, VerifyOtpDto } from '../dto/auth.dto';
+import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiResponse } from '@nestjs/swagger';
+import {
+  BaseResponseDto,
+  BaseValidationErrorDto as ValidationErrorDto,
+  BaseUnauthorizedErrorDto as UnauthorizedErrorDto,
+  BaseForbiddenErrorDto as ForbiddenErrorDto,
+  BaseInternalServerErrorDto as InternalServerErrorDto,
+  BaseErrorResponseDto as TooManyRequestsErrorDto,
+} from '../../../common/dto';
+import { UserProfileDto } from '../../users/dto/user-response.dto';
+import { AuthResponseDto } from '../dto/auth-response.dto';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly userService: UserService,
+  ) {}
 
   @Post('initiate')
   @ApiOperation({
     summary: 'Initiate authentication',
-    description:
-      'Start the authentication process using email, phone number, or Google OAuth token. This will send an OTP if using email or phone.',
+    description: 'Start the authentication process by sending OTP to email or phone',
   })
-  @ApiBody({ type: InitiateAuthDto })
   @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Authentication initiated successfully',
+    status: 200,
+    description: 'OTP sent successfully',
+    type: BaseResponseDto,
     schema: {
-      type: 'object',
       properties: {
-        message: {
-          type: 'string',
-          example: 'OTP sent to email',
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'OTP sent successfully' },
+        data: {
+          type: 'object',
+          properties: {
+            requestId: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+          },
         },
       },
     },
   })
   @ApiResponse({
-    status: HttpStatus.BAD_REQUEST,
+    status: 400,
     description: 'Invalid input data',
+    type: ValidationErrorDto,
   })
-  async initiateAuth(@Body() dto: InitiateAuthDto) {
-    return this.authService.initiateAuth(dto);
+  @ApiResponse({
+    status: 429,
+    description: 'Too many OTP requests',
+    type: TooManyRequestsErrorDto,
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: InternalServerErrorDto,
+  })
+  async initiateAuth(
+    @Body() dto: InitiateAuthDto,
+  ): Promise<BaseResponseDto<{ requestId: string }>> {
+    const data = await this.authService.initiateAuth(dto);
+    return new BaseResponseDto(HttpStatus.OK, 'OTP sent successfully', {
+      requestId: data.requestId,
+    });
   }
 
   @Post('verify')
   @ApiOperation({
     summary: 'Verify OTP',
-    description:
-      'Verify the OTP received via email or phone to complete the authentication process.',
+    description: 'Verify the OTP and complete authentication',
   })
-  @ApiBody({ type: VerifyOtpDto })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: 200,
     description: 'OTP verified successfully',
+    type: BaseResponseDto,
     schema: {
-      type: 'object',
       properties: {
-        user: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            email: { type: 'string' },
-          },
-        },
-        accessToken: { type: 'string' },
-        refreshToken: { type: 'string' },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'OTP verified successfully' },
+        data: { $ref: '#/components/schemas/AuthResponseDto' },
       },
     },
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
+    status: 400,
     description: 'Invalid OTP',
+    type: ValidationErrorDto,
   })
-  async verifyOtp(@Body() dto: VerifyOtpDto) {
-    return this.authService.verifyOtp(dto);
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials',
+    type: UnauthorizedErrorDto,
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: InternalServerErrorDto,
+  })
+  async verifyOtp(@Body() dto: VerifyOtpDto): Promise<BaseResponseDto<AuthResponseDto>> {
+    const data = await this.authService.verifyOtp(dto);
+    return new BaseResponseDto(HttpStatus.OK, 'OTP verified successfully', data);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('onboarding')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Complete user onboarding',
-    description: 'Complete the user onboarding process by providing required profile information.',
+    description: 'Complete the user onboarding process with additional information',
   })
-  @ApiBody({ type: OnboardingDto })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: 200,
     description: 'Onboarding completed successfully',
-    type: OnboardingDto,
+    schema: {
+      allOf: [
+        { $ref: '#/components/schemas/BaseResponseDto' },
+        {
+          properties: {
+            data: {
+              $ref: '#/components/schemas/AuthResponseDto',
+            },
+          },
+        },
+      ],
+    },
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'User not authenticated',
+    status: 400,
+    description: 'Invalid input data',
+    type: ValidationErrorDto,
   })
-  async completeOnboarding(@Req() req: RequestWithUser, @Body() dto: OnboardingDto) {
-    return this.authService.completeOnboarding(req.user.sub, dto);
+  @ApiResponse({
+    status: 401,
+    description: 'User not authenticated',
+    type: UnauthorizedErrorDto,
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: InternalServerErrorDto,
+  })
+  async completeOnboarding(
+    @CurrentUser() user: { sub: string },
+    @Body() dto: OnboardingDto,
+  ): Promise<BaseResponseDto<AuthResponseDto>> {
+    const data = await this.authService.completeOnboarding(user.sub, dto);
+    return new BaseResponseDto(HttpStatus.OK, 'Onboarding completed successfully', data);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post('upload-photo')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @UseInterceptors(FileInterceptor('photo'))
+  @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Upload user photo',
-    description: "Upload a photo for the user's profile. The photo will be processed and stored.",
+    summary: 'Upload profile photo',
+    description: 'Upload a profile photo for the authenticated user',
   })
-  @ApiBody({ type: UploadPhotoDto })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: 200,
     description: 'Photo uploaded successfully',
+    type: BaseResponseDto,
     schema: {
-      type: 'object',
       properties: {
-        id: { type: 'string' },
-        url: { type: 'string' },
-        userId: { type: 'string' },
-        isProfilePicture: { type: 'boolean' },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Photo uploaded successfully' },
+        data: {
+          type: 'object',
+          properties: {
+            photoUrl: { type: 'string', example: 'https://example.com/photo.jpg' },
+          },
+        },
       },
     },
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
+    status: 400,
+    description: 'Invalid file format or size',
+    type: ValidationErrorDto,
+  })
+  @ApiResponse({
+    status: 401,
     description: 'User not authenticated',
-  })
-  async uploadPhoto(@Req() req: RequestWithUser, @UploadedFile() file: Express.Multer.File) {
-    const dto: UploadPhotoDto = {
-      photoUrl: file.path,
-    };
-    return this.authService.uploadPhoto(req?.user?.sub, dto);
-  }
-
-  @Post('refresh')
-  @ApiOperation({
-    summary: 'Refresh access token',
-    description: 'Get a new access token using a valid refresh token.',
-  })
-  @ApiBody({ type: RefreshTokenDto })
-  @ApiResponse({
-    status: HttpStatus.OK,
-    description: 'Token refreshed successfully',
-    schema: {
-      type: 'object',
-      properties: {
-        accessToken: { type: 'string' },
-        refreshToken: { type: 'string' },
-      },
-    },
+    type: UnauthorizedErrorDto,
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
-    description: 'Invalid refresh token',
+    status: 500,
+    description: 'Internal server error',
+    type: InternalServerErrorDto,
   })
-  async refreshToken(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto);
+  @UseInterceptors(FileInterceptor('photo'))
+  async uploadPhoto(
+    @CurrentUser() user: { sub: string },
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<BaseResponseDto<{ photoUrl: string }>> {
+    const data = await this.authService.uploadPhoto(user.sub, file);
+    return new BaseResponseDto(HttpStatus.OK, 'Photo uploaded successfully', {
+      photoUrl: data.url,
+    });
   }
 
   @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Logout user',
-    description: "Invalidate the user's refresh token and log them out.",
+    description: "Invalidate the user's refresh token and log them out",
   })
-  @ApiBody({ type: LogoutDto })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: 200,
     description: 'Logged out successfully',
+    type: BaseResponseDto,
     schema: {
-      type: 'object',
       properties: {
+        statusCode: { type: 'number', example: 200 },
         message: { type: 'string', example: 'Logged out successfully' },
+        data: { type: 'null' },
       },
     },
   })
-  async logout() {
-    return this.authService.logout();
+  @ApiResponse({
+    status: 401,
+    description: 'User not authenticated',
+    type: UnauthorizedErrorDto,
+  })
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: InternalServerErrorDto,
+  })
+  async logout(): Promise<BaseResponseDto<null>> {
+    await this.authService.logout();
+    return new BaseResponseDto(HttpStatus.OK, 'Logged out successfully', null);
   }
 
+  @Post('become-creator')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.USER)
-  @Post('become-creator')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Become a creator',
     description: 'Upgrade user account to creator status. Only available to regular users.',
   })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: 200,
     description: 'Successfully upgraded to creator',
+    type: BaseResponseDto,
     schema: {
-      type: 'object',
       properties: {
-        id: { type: 'string' },
-        roles: { type: 'array', items: { type: 'string' } },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Successfully upgraded to creator' },
+        data: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
+            roles: { type: 'array', items: { type: 'string' }, example: ['USER', 'CREATOR'] },
+          },
+        },
       },
     },
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
+    status: 401,
     description: 'User not authenticated',
+    type: UnauthorizedErrorDto,
   })
   @ApiResponse({
-    status: HttpStatus.FORBIDDEN,
+    status: 403,
     description: 'User already has creator role or is an affiliate',
+    type: ForbiddenErrorDto,
   })
-  async becomeCreator(@Req() req: RequestWithUser) {
-    return this.authService.becomeCreator(req.user.sub);
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: InternalServerErrorDto,
+  })
+  async becomeCreator(
+    @CurrentUser() user: { sub: string },
+  ): Promise<BaseResponseDto<{ id: string; roles: string[] }>> {
+    const data = await this.authService.becomeCreator(user.sub);
+    return new BaseResponseDto(HttpStatus.OK, 'Successfully upgraded to creator', data);
   }
 
   @Get('profile')
@@ -234,40 +306,29 @@ export class AuthController {
     description: "Retrieve the authenticated user's profile information.",
   })
   @ApiResponse({
-    status: HttpStatus.OK,
+    status: 200,
     description: 'Profile retrieved successfully',
+    type: BaseResponseDto,
     schema: {
-      type: 'object',
       properties: {
-        success: { type: 'boolean' },
-        data: {
-          type: 'object',
-          properties: {
-            id: { type: 'string' },
-            email: { type: 'string' },
-            username: { type: 'string' },
-            bio: { type: 'string' },
-            profilePicture: { type: 'string' },
-            interests: { type: 'array', items: { type: 'string' } },
-            location: {
-              type: 'object',
-              properties: {
-                latitude: { type: 'number' },
-                longitude: { type: 'number' },
-              },
-            },
-            averageRating: { type: 'number' },
-            totalRatings: { type: 'number' },
-          },
-        },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Profile retrieved successfully' },
+        data: { $ref: '#/components/schemas/UserProfileDto' },
       },
     },
   })
   @ApiResponse({
-    status: HttpStatus.UNAUTHORIZED,
+    status: 401,
     description: 'User not authenticated',
+    type: UnauthorizedErrorDto,
   })
-  async getProfile(@Req() req: RequestWithUser) {
-    return this.authService.getProfile(req.user.sub);
+  @ApiResponse({
+    status: 500,
+    description: 'Internal server error',
+    type: InternalServerErrorDto,
+  })
+  async getProfile(@CurrentUser() user: { sub: string }): Promise<BaseResponseDto<UserProfileDto>> {
+    const profile = await this.userService.findById(user.sub);
+    return new BaseResponseDto(HttpStatus.OK, 'Profile retrieved successfully', profile);
   }
 }

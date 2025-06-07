@@ -1,29 +1,60 @@
-import { IsOptional, IsBoolean, IsString } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional, IsObject, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class UserPreferencesDto {
-  @ApiPropertyOptional({ description: 'Receive push notifications' })
+class NotificationPreferences {
+  @ApiProperty({
+    description: 'Whether to receive email notifications',
+    example: true,
+    required: false,
+  })
   @IsOptional()
-  @IsBoolean()
-  pushNotifications?: boolean;
+  email?: boolean;
 
-  @ApiPropertyOptional({ description: 'Receive email notifications' })
+  @ApiProperty({
+    description: 'Whether to receive push notifications',
+    example: true,
+    required: false,
+  })
   @IsOptional()
-  @IsBoolean()
-  emailNotifications?: boolean;
+  push?: boolean;
 
-  @ApiPropertyOptional({ description: 'Profile visibility: public/private' })
+  @ApiProperty({
+    description: 'Whether to receive SMS notifications',
+    example: true,
+    required: false,
+  })
   @IsOptional()
+  sms?: boolean;
+}
+
+export class UpdatePreferencesDto {
+  @ApiProperty({
+    description: 'User language preference',
+    example: 'en',
+    required: false,
+  })
   @IsString()
-  profileVisibility?: 'public' | 'private';
-
-  @ApiPropertyOptional({ description: 'Hide rating from others' })
   @IsOptional()
-  @IsBoolean()
-  hideRating?: boolean;
+  language?: string;
 
-  @ApiPropertyOptional({ description: 'Who can message: all/matches' })
-  @IsOptional()
+  @ApiProperty({
+    description: 'User timezone',
+    example: 'UTC',
+    required: false,
+  })
   @IsString()
-  whoCanMessage?: 'all' | 'matches';
+  @IsOptional()
+  timezone?: string;
+
+  @ApiProperty({
+    description: 'Notification preferences',
+    type: NotificationPreferences,
+    required: false,
+  })
+  @IsObject()
+  @ValidateNested()
+  @Type(() => NotificationPreferences)
+  @IsOptional()
+  notifications?: NotificationPreferences;
 }
