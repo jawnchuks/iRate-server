@@ -50,13 +50,16 @@ async function bootstrap() {
       credentials: true,
     });
 
-    // Swagger setup
+    // Set global prefix for all API endpoints
+    app.setGlobalPrefix('api');
+
+    // Swagger setup at /swagger-docs
     const document = SwaggerModule.createDocument(app, swaggerConfig);
-    SwaggerModule.setup('api', app, document, {
+    SwaggerModule.setup('swagger-docs', app, document, {
       ...swaggerCustomOptions,
       customCss: '.swagger-ui .topbar { display: none }',
-      customJs: undefined, // Remove custom JS for now
-      customfavIcon: undefined, // Remove custom favicon for now
+      customJs: undefined,
+      customfavIcon: undefined,
     });
 
     const port = process.env.PORT || 9000;
@@ -67,8 +70,8 @@ async function bootstrap() {
 
     const apiUrl = process.env.API_URL || `http://localhost:${port}`;
     logger.log(`✅ Application is running on: ${apiUrl}`);
-    logger.log(`📚 Swagger documentation is available at: ${apiUrl}/api`);
-    logger.log(`🔍 Health check endpoint is available at: ${apiUrl}/`);
+    logger.log(`📚 Swagger documentation is available at: ${apiUrl}/swagger-docs`);
+    logger.log(`🔍 Health check endpoint is available at: ${apiUrl}/api/`);
 
     // Handle graceful shutdown
     const signals = ['SIGTERM', 'SIGINT'];
