@@ -1,19 +1,14 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from 'src/prisma/prisma.service';
 import { UserRole } from '@prisma/client';
-import {
-  OnboardingDto,
-  InitiateAuthDto,
-  VerifyOtpDto,
-  UploadPhotoDto,
-  RefreshTokenDto,
-} from '../dto';
+import { OnboardingDto, InitiateAuthDto, VerifyOtpDto, RefreshTokenDto } from '../dto';
 import { GoogleOAuthService } from './google-oauth.service';
-import { EmailService } from './email.service';
-import { PhoneService } from './phone.service';
 import { CloudinaryService } from 'src/common/utils/cloudinary';
+import { AuthResponseDto } from '../dto/auth-response.dto';
+import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationService } from '../../notifications/services/notification.service';
+import { RedisService } from '../../redis/redis.service';
 
 @Injectable()
 export class AuthService {
@@ -22,12 +17,12 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly googleOAuthService: GoogleOAuthService,
-    private readonly emailService: EmailService,
-    private readonly phoneService: PhoneService,
+    private readonly notificationService: NotificationService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly redisService: RedisService,
   ) {}
 
-  async initiateAuth(dto: InitiateAuthDto) {
+  async initiateAuth(dto: InitiateAuthDto): Promise<{ requestId: string }> {
     const { email, phoneNumber, googleToken } = dto;
 
     if (googleToken) {
@@ -46,33 +41,58 @@ export class AuthService {
         },
       });
 
-      const tokens = await this.generateTokens(user);
-      return { user, ...tokens };
+      return { requestId: user.id };
     }
 
     if (email) {
+      // Check if user exists and is already verified
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (existingUser?.emailVerified) {
+        throw new BadRequestException('Email is already verified');
+      }
+
       const otp = Math.floor(1000 + Math.random() * 9000).toString();
-      await this.emailService.sendVerificationEmail(email, otp);
-      return { message: 'OTP sent to email' };
+      await this.redisService.storeOTP(email, otp);
+
+      await this.notificationService.sendVerificationEmail(email, {
+        name: existingUser?.firstName || 'User',
+        otp,
+      });
+
+      return { requestId: email };
     }
 
     if (phoneNumber) {
+      // Check if user exists and is already verified
+      const existingUser = await this.prisma.user.findUnique({
+        where: { phoneNumber },
+      });
+
+      if (existingUser?.phoneVerified) {
+        throw new BadRequestException('Phone number is already verified');
+      }
+
       const otp = Math.floor(1000 + Math.random() * 9000).toString();
-      await this.phoneService.sendOtp(phoneNumber, otp);
-      return { message: 'OTP sent to phone' };
+      await this.redisService.storeOTP(phoneNumber, otp);
+
+      await this.notificationService.sendVerificationSMS(phoneNumber, { otp });
+
+      return { requestId: phoneNumber };
     }
 
     throw new BadRequestException('Either email, phoneNumber, or googleToken must be provided');
   }
 
-  async verifyOtp(dto: VerifyOtpDto) {
+  async verifyOtp(dto: VerifyOtpDto): Promise<AuthResponseDto> {
     const { email, phoneNumber, otp } = dto;
 
     if (email) {
-      // TODO: Implement real OTP verification
-      const isValid = true;
+      const isValid = await this.redisService.verifyOTP(email, otp);
       if (!isValid) {
-        throw new UnauthorizedException('Invalid OTP');
+        throw new UnauthorizedException('Invalid or expired OTP');
       }
 
       const user = await this.prisma.user.upsert({
@@ -86,13 +106,13 @@ export class AuthService {
       });
 
       const tokens = await this.generateTokens(user);
-      return { user, ...tokens };
+      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
     }
 
     if (phoneNumber) {
-      const isValid = await this.phoneService.verifyOtp(phoneNumber, otp);
+      const isValid = await this.redisService.verifyOTP(phoneNumber, otp);
       if (!isValid) {
-        throw new UnauthorizedException('Invalid OTP');
+        throw new UnauthorizedException('Invalid or expired OTP');
       }
 
       const user = await this.prisma.user.upsert({
@@ -106,49 +126,52 @@ export class AuthService {
       });
 
       const tokens = await this.generateTokens(user);
-      return { user, ...tokens };
+      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
     }
 
     throw new BadRequestException('Either email or phoneNumber must be provided');
   }
 
-  async completeOnboarding(userId: string, dto: OnboardingDto) {
+  async completeOnboarding(userId: string, dto: OnboardingDto): Promise<AuthResponseDto> {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...dto,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000),
+        gender: dto.gender,
+        selfDescription: dto.selfDescription,
+        valuesInOthers: dto.valuesInOthers,
+        visibility: dto.visibility,
         onboardingComplete: true,
-        // profileCompletionPercentage: 100, // TODO: Add this back in by calculating what fields needs to be completed in user model
       },
     });
 
-    return user;
+    const tokens = await this.generateTokens(user);
+    return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
   }
 
-  async uploadPhoto(userId: string, dto: UploadPhotoDto) {
-    const { photoUrl } = dto;
-    const uploadResult = await this.cloudinaryService.uploadImage(photoUrl);
-
-    const photo = await this.prisma.userPhoto.create({
+  async uploadPhoto(userId: string, file: Express.Multer.File): Promise<{ url: string }> {
+    const base64String = file.buffer.toString('base64');
+    const dataURI = `data:${file.mimetype};base64,${base64String}`;
+    const result = await this.cloudinaryService.uploadImage(dataURI);
+    await this.prisma.userPhoto.create({
       data: {
-        url: uploadResult.secure_url,
-        userId,
+        url: result.url,
         isProfilePicture: true,
+        user: {
+          connect: {
+            id: userId,
+          },
+        },
       },
     });
-
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { profilePictureId: photo.id },
-    });
-
-    return photo;
+    return { url: result.url };
   }
 
-  async refreshToken(dto: RefreshTokenDto) {
-    const { refreshToken } = dto;
+  async refreshToken(dto: RefreshTokenDto): Promise<{ accessToken: string }> {
     try {
-      const payload = await this.jwtService.verifyAsync(refreshToken);
+      const payload = await this.jwtService.verifyAsync(dto.refreshToken);
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
       });
@@ -158,18 +181,18 @@ export class AuthService {
       }
 
       const tokens = await this.generateTokens(user);
-      return tokens;
+      return { accessToken: tokens.accessToken };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
 
-  async logout() {
+  async logout(): Promise<void> {
     // In a real application, you might want to blacklist the refresh token
-    return { message: 'Logged out successfully' };
+    return;
   }
 
-  async becomeCreator(userId: string) {
+  async becomeCreator(userId: string): Promise<{ id: string; roles: string[] }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -193,34 +216,9 @@ export class AuthService {
       },
     });
 
-    return updatedUser;
-  }
-
-  async getProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        profilePicture: true,
-      },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
     return {
-      success: true,
-      data: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        bio: user.bio,
-        profilePicture: user.profilePicture?.url,
-        interests: user.interests,
-        location: user.location,
-        averageRating: user.averageRating,
-        totalRatings: user.totalRatings,
-      },
+      id: updatedUser.id,
+      roles: updatedUser.roles,
     };
   }
 
@@ -235,5 +233,21 @@ export class AuthService {
       accessToken,
       refreshToken,
     };
+  }
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profilePhotos: true,
+        profilePicture: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    return user;
   }
 }

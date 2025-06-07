@@ -27,6 +27,65 @@ enum UserRole {
   AFFILIATE
 }
 
+enum VerificationStatus {
+  PENDING
+  IN_PROGRESS
+  VERIFIED
+  REJECTED
+  EXPIRED
+}
+
+enum VerificationType {
+  PHOTO
+  VIDEO
+  DOCUMENT
+  FACE_RECOGNITION
+  PHONE
+  EMAIL
+}
+
+enum VerificationDocumentType {
+  ID_CARD
+  PASSPORT
+  DRIVERS_LICENSE
+  RESIDENCE_PERMIT
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+}
+
+enum ChatRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum NotificationType {
+  RATING
+  MESSAGE
+  CHAT_REQUEST
+  SYSTEM
+  VERIFICATION
+  PROFILE_UPDATE
+}
+
+enum SubscriptionPlanType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+  PENDING
+}
+
 model User {
   id                          String               @id @default(uuid())
   email                       String?              @unique
@@ -74,6 +133,23 @@ model User {
   blockedBy                   BlockedUser[]        @relation("BlockedToBlocker")
   reports                     UserReport[]         @relation("ReporterToReported")
   reportedBy                  UserReport[]         @relation("ReportedToReporter")
+  verificationStatus          VerificationStatus   @default(PENDING)
+  verificationAttempts        Int                @default(0)
+  lastVerificationAt        DateTime?
+  verificationExpiresAt     DateTime?
+  isVerified                Boolean          @default(false)
+  verificationScore         Int                @default(0)
+  trustScore                Int                @default(0)
+  riskLevel                 Int                @default(0)
+  lastRiskAssessment      DateTime?
+  verificationDocuments   VerificationDocument[]
+  verificationSessions  VerificationSession[]
+  sentChatRequests     ChatRequest[] @relation("SenderToRequest")
+  receivedChatRequests ChatRequest[] @relation("ReceiverToRequest")
+  subscriptions         Subscription[]
+  @@index([email])
+  @@index([isVerified])
+  @@index([isActive])
 }
 
 model VerificationOTP {
@@ -103,6 +179,7 @@ model Rating {
 model Message {
   id             String       @id @default(uuid())
   content        String
+  type           MessageType  @default(TEXT)
   senderId       String
   conversationId String
   sender         User         @relation("MessageSender", fields: [senderId], references: [id])
@@ -122,17 +199,16 @@ model Message {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String           @id @default(uuid())
   userId    String
-  type      String
-  priority  String
+  type      NotificationType
   title     String
   message   String
   data      Json?
-  read      Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  read      Boolean         @default(false)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
@@ -228,6 +304,102 @@ model UserReport {
 
   @@index([reporterId])
   @@index([reportedId])
+}
+
+model VerificationDocument {
+  id                String                  @id @default(uuid())
+  userId            String
+  type              VerificationDocumentType
+  documentNumber    String?
+  countryOfIssue    String?
+  expiryDate        DateTime?
+  verificationStatus VerificationStatus     @default(PENDING)
+  documentUrl       String
+  selfieUrl         String?
+  metadata          Json?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  verifiedAt        DateTime?
+  rejectedAt        DateTime?
+  rejectionReason   String?
+  user              User                   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([verificationStatus])
+}
+
+model VerificationSession {
+  id                String            @id @default(uuid())
+  userId            String
+  type              VerificationType
+  status            VerificationStatus @default(PENDING)
+  sessionToken      String            @unique
+  expiresAt         DateTime
+  metadata          Json?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  completedAt       DateTime?
+  user              User              @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([sessionToken])
+  @@index([status])
+}
+
+model ChatRequest {
+  id        String           @id @default(uuid())
+  senderId  String
+  receiverId String
+  status    ChatRequestStatus @default(PENDING)
+  sender    User             @relation("SenderToRequest", fields: [senderId], references: [id])
+  receiver  User             @relation("ReceiverToRequest", fields: [receiverId], references: [id])
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([status])
+}
+
+model SubscriptionPlan {
+  id              String    @id @default(uuid())
+  name            String
+  description     String
+  price           Float
+  type            SubscriptionPlanType
+  messagesPerMonth Int
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  subscriptions   Subscription[]
+}
+
+model Subscription {
+  id          String    @id @default(uuid())
+  userId      String
+  planId      String
+  status      SubscriptionStatus
+  startDate   DateTime
+  endDate     DateTime
+  messagesUsed Int      @default(0)
+  autoRenew   Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  plan        SubscriptionPlan @relation(fields: [planId], references: [id])
+  payments    Payment[]
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  subscriptionId  String
+  amount          Float
+  currency        String    @default("USD")
+  status          String
+  paymentMethod   String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  subscription    Subscription @relation(fields: [subscriptionId], references: [id])
 }
 
 // Add any additional models as needed based on your application requirements.

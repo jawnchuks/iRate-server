@@ -1,45 +1,49 @@
-import { DocumentBuilder } from '@nestjs/swagger';
+import { DocumentBuilder, SwaggerCustomOptions } from '@nestjs/swagger';
 
 export const swaggerConfig = new DocumentBuilder()
   .setTitle('iRate API')
-  .setDescription(
-    `
-    The iRate server API provides a comprehensive set of endpoints for user management, 
-    authentication, geolocation services, ratings, and more.
-    
-    ## Features
-    - User Management & Authentication
-    - Profile Management
-    - Discovery & Matching
-    - Chat & Messaging
-    - Security Features (2FA, Device Verification)
-    - Geolocation Services
-    - Rating System
-    - Email Notifications
-    - Real-time Updates
-    - Media Management
-    - Analytics & Metrics
-    - Achievement System
-    - Marketing Tools
-    - Subscription Management
-  `,
-  )
+  .setDescription('iRate - A social rating platform API')
   .setVersion('1.0')
-  .addBearerAuth()
-  .addServer(process.env.API_URL || 'http://localhost:3000', 'API Server')
   .addTag('auth', 'Authentication endpoints')
-  .addTag('users', 'User management endpoints')
-  .addTag('profiles', 'Profile management endpoints')
-  .addTag('discovery', 'Discovery and matching endpoints')
-  .addTag('chat', 'Chat and messaging endpoints')
-  .addTag('security', 'Security and 2FA endpoints')
-  .addTag('geolocation', 'Location and mapping services')
+  .addTag('users', 'User management and discovery endpoints')
   .addTag('ratings', 'Rating system endpoints')
-  .addTag('email', 'Email notification endpoints')
+  .addTag('profile', 'Profile management endpoints')
+  .addTag('notifications', 'Notification endpoints')
+  .addTag('affiliate', 'Affiliate system endpoints')
+  .addTag('chat', 'Chat and messaging endpoints')
+  .addTag('chat-requests', 'Chat request endpoints')
+  .addTag('subscriptions', 'Subscription endpoints')
   .addTag('media', 'Media management endpoints')
-  .addTag('analytics', 'Analytics and metrics endpoints')
-  .addTag('achievements', 'Achievement system endpoints')
-  .addTag('marketing', 'Marketing tools endpoints')
-  .addTag('notifications', 'Notification system endpoints')
-  .addTag('verification', 'User verification endpoints')
+  .addTag('admin', 'Admin management endpoints')
+  .addBearerAuth(
+    {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+      name: 'JWT',
+      description: 'Enter JWT token',
+      in: 'header',
+    },
+    'JWT-auth',
+  )
+  .addServer('http://localhost:9000', 'Local Development')
+  .addServer('https://api.irate.com', 'Production')
+  .addServer('https://staging-api.irate.com', 'Staging')
   .build();
+
+export const swaggerCustomOptions: SwaggerCustomOptions = {
+  swaggerOptions: {
+    persistAuthorization: true,
+    docExpansion: 'none',
+    filter: true,
+    showRequestDuration: true,
+    syntaxHighlight: {
+      theme: 'monokai',
+    },
+    defaultModelsExpandDepth: 3,
+    defaultModelExpandDepth: 3,
+    displayRequestDuration: true,
+    tryItOutEnabled: true,
+  },
+  customSiteTitle: 'iRate API Documentation',
+};

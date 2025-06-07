@@ -6,15 +6,19 @@ import { AuthService } from './services/auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { RolesGuard } from './guards/roles.guard';
 import { GoogleOAuthService } from './services/google-oauth.service';
-import { EmailService } from './services/email.service';
-import { PhoneService } from './services/phone.service';
-import { PrismaModule } from 'src/prisma/prisma.module';
+import { PrismaModule } from '../prisma/prisma.module';
 import { CloudinaryService } from 'src/common/utils/cloudinary';
+import { UserModule } from '../users/user.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
   imports: [
     ConfigModule,
     PrismaModule,
+    UserModule,
+    NotificationsModule,
+    RedisModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -25,15 +29,7 @@ import { CloudinaryService } from 'src/common/utils/cloudinary';
     }),
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    JwtStrategy,
-    RolesGuard,
-    GoogleOAuthService,
-    EmailService,
-    PhoneService,
-    CloudinaryService,
-  ],
+  providers: [AuthService, JwtStrategy, RolesGuard, GoogleOAuthService, CloudinaryService],
   exports: [AuthService, RolesGuard],
 })
 export class AuthModule {}
