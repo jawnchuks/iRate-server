@@ -93,11 +93,7 @@ export class AuthService {
         }
 
         try {
-          const otp = Math.floor(1000 + Math.random() * 9000).toString();
-          await this.redisService.storeOTP(phoneNumber, otp);
-
-          await this.notificationService.sendVerificationSMS(phoneNumber, { otp });
-
+          await this.notificationService.sendVerificationSMS(phoneNumber, {});
           return { requestId: phoneNumber };
         } catch (error) {
           if (error instanceof Error) {

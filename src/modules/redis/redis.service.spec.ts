@@ -13,11 +13,10 @@ describe('RedisService', () => {
           provide: ConfigService,
           useValue: {
             get: jest.fn((key: string) => {
-              // Provide mock values for your Redis config
-              if (key === 'REDIS_HOST') return 'localhost';
-              if (key === 'REDIS_PORT') return 6379;
-              if (key === 'REDIS_PASSWORD') return undefined;
-              return undefined;
+              if (key === 'REDIS_URL') {
+                return 'redis://localhost:6379';
+              }
+              return null;
             }),
           },
         },
