@@ -25,6 +25,7 @@ import {
   SMSPasswordResetData,
   SMSSubscriptionData,
 } from '../templates/notification-templates';
+import { RedisService } from '../../redis/redis.service';
 
 interface NotificationError extends Error {
   code?: string;
@@ -40,8 +41,14 @@ export class NotificationService {
   constructor(
     private readonly prisma: PrismaService,
     private configService: ConfigService,
+    private readonly redisService: RedisService,
   ) {
-    this.isDev = this.configService.get('NODE_ENV') === 'development';
+    const nodeEnv = this.configService.get('NODE_ENV');
+    this.logger.log(`Current NODE_ENV: ${nodeEnv}`);
+    this.isDev = nodeEnv === 'development';
+    this.logger.log(
+      `NotificationService initialized in ${this.isDev ? 'development' : 'production'} mode`,
+    );
     this.initializeEmailTransporter();
     this.initializeTwilioClient();
   }
@@ -70,10 +77,19 @@ export class NotificationService {
 
         this.emailTransporter = nodemailer.createTransport({
           service: 'gmail',
+          host: 'smtp.gmail.com',
+          port: 587,
+          secure: false,
           auth: {
             user: gmailUser,
             pass: gmailPass,
           },
+          tls: {
+            rejectUnauthorized: false,
+          },
+          connectionTimeout: 10000, // 10 seconds
+          greetingTimeout: 10000,
+          socketTimeout: 10000,
         });
       }
 
@@ -81,13 +97,16 @@ export class NotificationService {
       this.emailTransporter.verify((error: Error | null) => {
         if (error) {
           this.logger.error('Failed to initialize email transporter:', error);
-          throw new Error('Failed to initialize email transporter');
+          throw new Error(`Failed to initialize email transporter: ${error.message}`);
         }
         this.logger.log('Email transporter initialized successfully');
       });
     } catch (error) {
       this.logger.error('Failed to initialize email service:', error);
-      throw new InternalServerErrorException('Failed to initialize email service');
+      throw new InternalServerErrorException({
+        message: 'Failed to initialize email service',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
     }
   }
 
@@ -134,6 +153,10 @@ export class NotificationService {
     text: string;
   }): Promise<void> {
     try {
+      if (!this.emailTransporter) {
+        throw new Error('Email transporter not initialized');
+      }
+
       const info = await this.emailTransporter.sendMail({
         from: this.configService.get('EMAIL_FROM'),
         to,
@@ -150,10 +173,38 @@ export class NotificationService {
     } catch (error) {
       const notificationError = error as NotificationError;
       this.logger.error('Failed to send email:', notificationError);
+
+      // Check for specific SMTP errors
+      if (notificationError.code === 'EAUTH') {
+        throw new InternalServerErrorException({
+          message: 'Email authentication failed',
+          error: 'Invalid SMTP credentials',
+          details: 'Please check your SMTP username and password',
+        });
+      }
+
+      if (notificationError.code === 'ESOCKET') {
+        throw new InternalServerErrorException({
+          message: 'Email connection failed',
+          error: 'Could not connect to SMTP server',
+          details: 'Please check your SMTP host and port settings',
+        });
+      }
+
+      if (notificationError.code === 'ETIMEDOUT') {
+        throw new InternalServerErrorException({
+          message: 'Email connection timed out',
+          error: 'SMTP server not responding',
+          details: 'Please check your SMTP server status and network connection',
+        });
+      }
+
+      // Generic error handling
       throw new InternalServerErrorException({
         message: 'Failed to send email',
         error: notificationError.message,
         code: notificationError.code,
+        details: 'Please check your email configuration and try again',
       });
     }
   }
@@ -166,20 +217,46 @@ export class NotificationService {
         throw new Error('Twilio phone number not configured');
       }
 
-      await this.twilioClient.messages.create({
+      // In development, log the message instead of sending
+      if (this.isDev) {
+        this.logger.log(`[DEV MODE] SMS would be sent to ${to} from ${twilioNumber}`);
+        this.logger.log(`[DEV MODE] Message content: ${message}`);
+        return;
+      }
+
+      const result = await this.twilioClient.messages.create({
         body: message,
         to,
         from: twilioNumber,
       });
 
-      this.logger.log(`SMS sent successfully to ${to}`);
+      this.logger.log(`SMS sent successfully to ${to} (SID: ${result.sid})`);
     } catch (error) {
       const notificationError = error as NotificationError;
       this.logger.error('Failed to send SMS:', notificationError);
+
+      // Provide more specific error messages
+      if (notificationError.code === '21211') {
+        throw new InternalServerErrorException({
+          message: 'Invalid phone number',
+          error: 'The phone number provided is not valid',
+          details: 'Please check the phone number format and try again',
+        });
+      }
+
+      if (notificationError.code === '21214') {
+        throw new InternalServerErrorException({
+          message: 'Invalid phone number',
+          error: 'The phone number provided is not mobile',
+          details: 'Please provide a valid mobile phone number',
+        });
+      }
+
       throw new InternalServerErrorException({
         message: 'Failed to send SMS',
         error: notificationError.message,
         code: notificationError.code,
+        details: 'Please check your SMS configuration and try again',
       });
     }
   }
@@ -440,10 +517,23 @@ export class NotificationService {
   async sendVerificationSMS(phoneNumber: string, data: SMSVerificationData): Promise<void> {
     try {
       const template = smsTemplates.verification;
-      if (!template.text) {
-        throw new Error('SMS template method not found');
+      if (!template || !template.text) {
+        throw new Error('SMS template not found');
       }
-      await this.sendSMS(phoneNumber, template.text(data));
+
+      // Generate OTP if not provided
+      const otp = data.otp || Math.floor(1000 + Math.random() * 9000).toString();
+
+      // Store OTP in Redis
+      await this.redisService.storeOTP(phoneNumber, otp);
+
+      // Always log OTP for now to debug
+      this.logger.log('\n==========================================');
+      this.logger.log(`🔑 OTP for ${phoneNumber}: ${otp}`);
+      this.logger.log('==========================================\n');
+
+      const message = template.text({ otp });
+      await this.sendSMS(phoneNumber, message);
     } catch (error) {
       const notificationError = error as NotificationError;
       this.logger.error(`Failed to send verification SMS to ${phoneNumber}:`, notificationError);

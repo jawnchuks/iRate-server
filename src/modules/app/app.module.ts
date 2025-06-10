@@ -10,9 +10,10 @@ import { UserModule } from '../users/user.module';
 import { ProfileModule } from '../profile/profile.module';
 import databaseConfig from '../../config/database.config';
 import { ChatModule } from '../chat/chat.module';
-import { NotificationModule } from '../notifications/notification.module';
+
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PaymentModule } from '../payment/payment.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { PaymentModule } from '../payment/payment.module';
     UserModule,
     ProfileModule,
     ChatModule,
-    NotificationModule,
+    NotificationsModule,
     SubscriptionsModule,
     PaymentModule,
   ],

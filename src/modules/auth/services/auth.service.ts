@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
@@ -23,67 +28,100 @@ export class AuthService {
   ) {}
 
   async initiateAuth(dto: InitiateAuthDto): Promise<{ requestId: string }> {
-    const { email, phoneNumber, googleToken } = dto;
+    try {
+      const { email, phoneNumber, googleToken } = dto;
 
-    if (googleToken) {
-      const googleUser = await this.googleOAuthService.verifyToken(googleToken);
-      if (!googleUser || !googleUser.email) {
-        throw new UnauthorizedException('Invalid Google token');
+      if (googleToken) {
+        const googleUser = await this.googleOAuthService.verifyToken(googleToken);
+        if (!googleUser || !googleUser.email) {
+          throw new UnauthorizedException('Invalid Google token');
+        }
+
+        const user = await this.prisma.user.upsert({
+          where: { email: googleUser.email },
+          update: {},
+          create: {
+            email: googleUser.email,
+            roles: [UserRole.USER],
+            emailVerified: true,
+          },
+        });
+
+        return { requestId: user.id };
       }
 
-      const user = await this.prisma.user.upsert({
-        where: { email: googleUser.email },
-        update: {},
-        create: {
-          email: googleUser.email,
-          roles: [UserRole.USER],
-          emailVerified: true,
-        },
-      });
+      if (email) {
+        // Check if user exists and is already verified
+        const existingUser = await this.prisma.user.findUnique({
+          where: { email },
+        });
 
-      return { requestId: user.id };
-    }
+        if (existingUser?.emailVerified) {
+          throw new BadRequestException('Email is already verified');
+        }
 
-    if (email) {
-      // Check if user exists and is already verified
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email },
-      });
+        try {
+          const otp = Math.floor(1000 + Math.random() * 9000).toString();
+          await this.redisService.storeOTP(email, otp);
 
-      if (existingUser?.emailVerified) {
-        throw new BadRequestException('Email is already verified');
+          await this.notificationService.sendVerificationEmail(email, {
+            name: existingUser?.firstName || 'User',
+            otp,
+          });
+
+          return { requestId: email };
+        } catch (error) {
+          if (error instanceof Error) {
+            throw new InternalServerErrorException({
+              message: 'Failed to send verification email',
+              error: error.message,
+              details: 'Please check your email configuration and try again',
+            });
+          }
+          throw error;
+        }
       }
 
-      const otp = Math.floor(1000 + Math.random() * 9000).toString();
-      await this.redisService.storeOTP(email, otp);
+      if (phoneNumber) {
+        // Check if user exists and is already verified
+        const existingUser = await this.prisma.user.findUnique({
+          where: { phoneNumber },
+        });
 
-      await this.notificationService.sendVerificationEmail(email, {
-        name: existingUser?.firstName || 'User',
-        otp,
-      });
+        if (existingUser?.phoneVerified) {
+          throw new BadRequestException('Phone number is already verified');
+        }
 
-      return { requestId: email };
-    }
-
-    if (phoneNumber) {
-      // Check if user exists and is already verified
-      const existingUser = await this.prisma.user.findUnique({
-        where: { phoneNumber },
-      });
-
-      if (existingUser?.phoneVerified) {
-        throw new BadRequestException('Phone number is already verified');
+        try {
+          await this.notificationService.sendVerificationSMS(phoneNumber, {});
+          return { requestId: phoneNumber };
+        } catch (error) {
+          if (error instanceof Error) {
+            throw new InternalServerErrorException({
+              message: 'Failed to send verification SMS',
+              error: error.message,
+              details: 'Please check your SMS configuration and try again',
+            });
+          }
+          throw error;
+        }
       }
 
-      const otp = Math.floor(1000 + Math.random() * 9000).toString();
-      await this.redisService.storeOTP(phoneNumber, otp);
+      throw new BadRequestException('Either email, phoneNumber, or googleToken must be provided');
+    } catch (error) {
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error;
+      }
 
-      await this.notificationService.sendVerificationSMS(phoneNumber, { otp });
+      // Log the full error for debugging
+      console.error('Auth initiation error:', error);
 
-      return { requestId: phoneNumber };
+      throw new InternalServerErrorException({
+        message: 'Authentication initiation failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        details: 'Please check the server logs for more information',
+      });
     }
-
-    throw new BadRequestException('Either email, phoneNumber, or googleToken must be provided');
   }
 
   async verifyOtp(dto: VerifyOtpDto): Promise<AuthResponseDto> {

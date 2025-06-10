@@ -50,7 +50,7 @@ export interface ChatRequestData {
 
 // SMS-specific interfaces
 export interface SMSVerificationData {
-  otp: string;
+  otp?: string;
 }
 
 export interface SMSPasswordResetData {

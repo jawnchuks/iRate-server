@@ -45,9 +45,17 @@ async function bootstrap() {
 
     // CORS configuration
     app.enableCors({
-      origin: true,
-      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      origin: [
+        'http://localhost:9000',
+        'http://localhost:3000',
+        'https://irate-server-production.up.railway.app',
+        /\.railway\.app$/,
+      ],
+      methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
       credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      exposedHeaders: ['Content-Range', 'X-Content-Range'],
+      maxAge: 3600,
     });
 
     // Set global prefix for all API endpoints

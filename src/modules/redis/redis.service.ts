@@ -9,11 +9,11 @@ export class RedisService implements OnModuleDestroy {
   private readonly OTP_EXPIRY = 300; // 5 minutes
 
   constructor(private configService: ConfigService) {
-    this.redis = new Redis({
-      host: this.configService.get('REDIS_HOST'),
-      port: this.configService.get('REDIS_PORT'),
-      password: this.configService.get('REDIS_PASSWORD'),
-    });
+    const redisUrl = this.configService.get('REDIS_URL');
+    if (!redisUrl) {
+      throw new Error('REDIS_URL is not defined in environment variables');
+    }
+    this.redis = new Redis(redisUrl);
   }
 
   async onModuleDestroy() {
