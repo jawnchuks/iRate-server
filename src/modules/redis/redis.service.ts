@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
@@ -7,49 +7,89 @@ export class RedisService implements OnModuleDestroy {
   private readonly redis: Redis;
   private readonly OTP_PREFIX = 'otp:';
   private readonly OTP_EXPIRY = 300; // 5 minutes
+  private readonly logger = new Logger(RedisService.name);
 
   constructor(private configService: ConfigService) {
     const redisUrl = this.configService.get('REDIS_URL');
     if (!redisUrl) {
       throw new Error('REDIS_URL is not defined in environment variables');
     }
-    this.redis = new Redis(redisUrl);
+
+    this.redis = new Redis(redisUrl, {
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        this.logger.log(`Redis connection attempt ${times}, retrying in ${delay}ms...`);
+        return delay;
+      },
+      maxRetriesPerRequest: 3,
+      enableReadyCheck: true,
+    });
+
+    this.redis.on('error', (error) => {
+      this.logger.error('Redis connection error:', error);
+    });
+
+    this.redis.on('connect', () => {
+      this.logger.log('Successfully connected to Redis');
+    });
+
+    this.redis.on('reconnecting', () => {
+      this.logger.log('Reconnecting to Redis...');
+    });
   }
 
   async onModuleDestroy() {
-    await this.redis.quit();
-  }
-
-  async get(key: string): Promise<string | null> {
-    return this.redis.get(key);
-  }
-
-  async set(key: string, value: string, expiry?: number): Promise<void> {
-    if (expiry) {
-      await this.redis.set(key, value, 'EX', expiry);
-    } else {
-      await this.redis.set(key, value);
+    try {
+      await this.redis.quit();
+      this.logger.log('Redis connection closed');
+    } catch (error: unknown) {
+      this.logger.error('Error closing Redis connection:', error);
     }
   }
 
+  private async executeWithRetry<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      this.logger.error('Redis operation failed:', error);
+      throw new Error(
+        `Redis operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  async get(key: string): Promise<string | null> {
+    return this.executeWithRetry(() => this.redis.get(key));
+  }
+
+  async set(key: string, value: string, expiry?: number): Promise<void> {
+    await this.executeWithRetry(async () => {
+      if (expiry) {
+        await this.redis.set(key, value, 'EX', expiry);
+      } else {
+        await this.redis.set(key, value);
+      }
+    });
+  }
+
   async del(key: string): Promise<void> {
-    await this.redis.del(key);
+    await this.executeWithRetry(() => this.redis.del(key));
   }
 
   async incr(key: string): Promise<number> {
-    return this.redis.incr(key);
+    return this.executeWithRetry(() => this.redis.incr(key));
   }
 
   async decr(key: string): Promise<number> {
-    return this.redis.decr(key);
+    return this.executeWithRetry(() => this.redis.decr(key));
   }
 
   async expire(key: string, seconds: number): Promise<void> {
-    await this.redis.expire(key, seconds);
+    await this.executeWithRetry(() => this.redis.expire(key, seconds));
   }
 
   async ttl(key: string): Promise<number> {
-    return this.redis.ttl(key);
+    return this.executeWithRetry(() => this.redis.ttl(key));
   }
 
   async storeOTP(identifier: string, otp: string): Promise<void> {
