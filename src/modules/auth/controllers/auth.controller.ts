@@ -166,8 +166,6 @@ export class AuthController {
   }
 
   @Post('upload-photo')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
     summary: 'Upload profile photo',
@@ -196,21 +194,15 @@ export class AuthController {
     type: ValidationErrorDto,
   })
   @ApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @ApiResponse({
     status: 500,
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
   @UseInterceptors(FileInterceptor('photo'))
   async uploadPhoto(
-    @CurrentUser() user: { sub: string },
     @UploadedFile() file: Express.Multer.File,
   ): Promise<BaseResponseDto<{ photoUrl: string }>> {
-    const data = await this.authService.uploadPhoto(user.sub, file);
+    const data = await this.authService.uploadPhoto(file);
     return new BaseResponseDto(HttpStatus.OK, 'Photo uploaded successfully', {
       photoUrl: data.url,
     });
