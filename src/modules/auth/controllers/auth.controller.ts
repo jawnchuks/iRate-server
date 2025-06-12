@@ -201,7 +201,8 @@ export class AuthController {
         fileSize: 5 * 1024 * 1024, // 5MB limit
       },
       fileFilter: (req, file, callback) => {
-        if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
+        console.log('Received file:', file);
+        if (!file.mimetype.startsWith('image/')) {
           return callback(new Error('Only image files are allowed!'), false);
         }
         callback(null, true);
@@ -212,7 +213,15 @@ export class AuthController {
     @UploadedFile() file: Express.Multer.File,
   ): Promise<BaseResponseDto<{ photoUrls: string[] }>> {
     try {
-      if (!file) {
+      console.log('Processing file upload:', {
+        fieldname: file?.fieldname,
+        originalname: file?.originalname,
+        mimetype: file?.mimetype,
+        size: file?.size,
+        buffer: file?.buffer ? 'Buffer present' : 'No buffer',
+      });
+
+      if (!file || !file.buffer) {
         throw new BadRequestException('No file uploaded');
       }
 
