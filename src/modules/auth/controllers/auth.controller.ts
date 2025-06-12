@@ -170,35 +170,30 @@ export class AuthController {
   @Post('upload-photo')
   @ApiConsumes('multipart/form-data')
   @ApiOperation({
-    summary: 'Upload profile photo',
-    description: 'Upload a profile photo for the authenticated user',
+    summary: 'Upload profile photos',
+    description:
+      'Upload one or more photos for the user profile. The first photo will be used as the profile picture.',
   })
   @ApiResponse({
     status: 200,
-    description: 'Photo uploaded successfully',
+    description: 'Photos uploaded successfully',
     type: BaseResponseDto,
     schema: {
       properties: {
         statusCode: { type: 'number', example: 200 },
-        message: { type: 'string', example: 'Photo uploaded successfully' },
+        message: { type: 'string', example: 'Photos uploaded successfully' },
         data: {
           type: 'object',
           properties: {
-            photoUrl: { type: 'string', example: 'https://example.com/photo.jpg' },
+            photoUrls: {
+              type: 'array',
+              items: { type: 'string' },
+              example: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
+            },
           },
         },
       },
     },
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Invalid file format or size',
-    type: ValidationErrorDto,
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
   })
   @UseInterceptors(
     FileInterceptor('photo', {
@@ -215,7 +210,7 @@ export class AuthController {
   )
   async uploadPhoto(
     @UploadedFile() file: Express.Multer.File,
-  ): Promise<BaseResponseDto<{ photoUrl: string }>> {
+  ): Promise<BaseResponseDto<{ photoUrls: string[] }>> {
     try {
       if (!file) {
         throw new BadRequestException('No file uploaded');
@@ -223,7 +218,7 @@ export class AuthController {
 
       const data = await this.authService.uploadPhoto(file);
       return new BaseResponseDto(HttpStatus.OK, 'Photo uploaded successfully', {
-        photoUrl: data.url,
+        photoUrls: [data.url],
       });
     } catch (error) {
       console.error('Error uploading photo:', error);
