@@ -14,6 +14,7 @@ import { AuthResponseDto } from '../dto/auth-response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { RedisService } from '../../redis/redis.service';
+import crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -227,10 +228,37 @@ export class AuthService {
   }
 
   async uploadPhoto(file: Express.Multer.File): Promise<{ url: string }> {
-    const base64String = file.buffer.toString('base64');
-    const dataURI = `data:${file.mimetype};base64,${base64String}`;
-    const result = await this.cloudinaryService.uploadImage(dataURI);
-    return { url: result.url };
+    try {
+      if (!file || !file.buffer) {
+        throw new BadRequestException('Invalid file data');
+      }
+
+      const base64String = file.buffer.toString('base64');
+      const dataURI = `data:${file.mimetype};base64,${base64String}`;
+
+      // During onboarding, we'll use a temporary folder
+      const uploadId = crypto.randomUUID();
+      const result = await this.cloudinaryService.uploadTemporaryPhoto(
+        dataURI,
+        'onboarding',
+        uploadId,
+      );
+
+      if (!result || !result.url) {
+        throw new InternalServerErrorException('Failed to upload image to Cloudinary');
+      }
+
+      return { url: result.url };
+    } catch (error) {
+      console.error('Error in uploadPhoto service:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Failed to process photo upload',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   async refreshToken(dto: RefreshTokenDto): Promise<{ accessToken: string }> {
