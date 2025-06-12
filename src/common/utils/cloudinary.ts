@@ -1,11 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { v2 as cloudinary, UploadApiErrorResponse, UploadApiResponse } from 'cloudinary';
+import {
+  v2 as cloudinary,
+  UploadApiErrorResponse,
+  UploadApiResponse,
+  TransformationOptions,
+} from 'cloudinary';
 import { ConfigService } from '@nestjs/config';
 
 interface UploadOptions {
   userId?: string;
   folder?: string;
-  transformation?: any[];
+  transformation?: TransformationOptions[];
   resourceType?: 'image' | 'video' | 'raw';
 }
 
@@ -27,7 +32,7 @@ export class CloudinaryService {
     return `${baseFolder}/${options.folder || 'public'}`;
   }
 
-  private getDefaultTransformations(): any[] {
+  private getDefaultTransformations(): TransformationOptions[] {
     return [{ quality: 'auto' }, { fetch_format: 'auto' }];
   }
 
@@ -118,7 +123,7 @@ export class CloudinaryService {
     return new Promise((resolve, reject) => {
       cloudinary.api.delete_resources_by_prefix(
         `iRate/users/${userId}/temp/${uploadId}`,
-        (error: any) => {
+        (error: Error | undefined) => {
           if (error) {
             reject(error);
           } else {
