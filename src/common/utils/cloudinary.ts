@@ -6,6 +6,7 @@ import {
   TransformationOptions,
 } from 'cloudinary';
 import { ConfigService } from '@nestjs/config';
+import { Readable } from 'stream';
 
 interface UploadOptions {
   userId?: string;
@@ -131,6 +132,33 @@ export class CloudinaryService {
           }
         },
       );
+    });
+  }
+
+  async uploadFile(file: Express.Multer.File): Promise<UploadApiResponse> {
+    return new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'iRate/temp',
+          resource_type: 'auto',
+          use_filename: true,
+          unique_filename: true,
+          overwrite: false,
+        },
+        (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+          if (error || !result) {
+            reject(error || new Error('Upload failed'));
+          } else {
+            resolve(result);
+          }
+        },
+      );
+
+      // Convert buffer to stream and pipe to upload
+      const bufferStream = new Readable();
+      bufferStream.push(file.buffer);
+      bufferStream.push(null);
+      bufferStream.pipe(uploadStream);
     });
   }
 }

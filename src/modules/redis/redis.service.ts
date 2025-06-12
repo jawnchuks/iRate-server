@@ -144,5 +144,27 @@ export class RedisService implements OnModuleDestroy {
     }
   }
 
+  async storeRequestId(identifier: string, requestId: string): Promise<void> {
+    const key = `request:${identifier}`;
+    await this.set(key, requestId, 3600); // 1 hour expiry
+  }
+
+  async getRequestId(identifier: string): Promise<string | null> {
+    const key = `request:${identifier}`;
+    return this.get(key);
+  }
+
+  async canResendOTP(identifier: string): Promise<boolean> {
+    const key = `otp_resend:${identifier}`;
+    const count = await this.get(key);
+    return !count || parseInt(count) < 3; // Allow max 3 resends
+  }
+
+  async incrementResendCount(identifier: string): Promise<void> {
+    const key = `otp_resend:${identifier}`;
+    await this.incr(key);
+    await this.expire(key, 3600); // 1 hour expiry
+  }
+
   // Add other Redis methods as needed
 }

@@ -105,3 +105,60 @@ export class AuthResponseDto {
     this.user = user;
   }
 }
+
+export class PhotoUploadResponseDto {
+  @ApiProperty({
+    description: 'Unique identifier for the uploaded photo',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  uploadId: string;
+
+  @ApiProperty({
+    description: 'URL of the uploaded photo',
+    example: 'https://cloudinary.com/image/upload/v1234567890/photo.jpg',
+  })
+  url: string;
+
+  constructor(uploadId: string, url: string) {
+    this.uploadId = uploadId;
+    this.url = url;
+  }
+}
+
+export class OtpVerificationResponseDto {
+  @ApiProperty({
+    description: 'Whether the OTP was verified successfully',
+    example: true,
+  })
+  verified: boolean;
+
+  @ApiProperty({
+    description: 'Request ID for the verification process',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  requestId: string;
+
+  constructor(verified: boolean, requestId: string) {
+    this.verified = verified;
+    this.requestId = requestId;
+  }
+}
+
+export class OtpResendResponseDto {
+  @ApiProperty({
+    description: 'Request ID for the verification process',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  requestId: string;
+
+  @ApiProperty({
+    description: 'Time remaining before OTP expires (in seconds)',
+    example: 300,
+  })
+  expiresIn: number;
+
+  constructor(requestId: string, expiresIn: number) {
+    this.requestId = requestId;
+    this.expiresIn = expiresIn;
+  }
+}
