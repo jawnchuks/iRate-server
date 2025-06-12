@@ -27,7 +27,9 @@ export class AuthService {
     private readonly redisService: RedisService,
   ) {}
 
-  async initiateAuth(dto: InitiateAuthDto): Promise<{ requestId: string }> {
+  async initiateAuth(
+    dto: InitiateAuthDto,
+  ): Promise<{ requestId: string; isNewUser: boolean; needsOnboarding: boolean }> {
     try {
       const { email, phoneNumber, googleToken } = dto;
 
@@ -47,17 +49,33 @@ export class AuthService {
           },
         });
 
-        return { requestId: user.id };
+        return {
+          requestId: user.id,
+          isNewUser: !user.lastVerificationAt,
+          needsOnboarding: !user.onboardingComplete,
+        };
       }
 
       if (email) {
-        // Check if user exists and is already verified
+        // Check if user exists
         const existingUser = await this.prisma.user.findUnique({
           where: { email },
         });
 
-        if (existingUser?.emailVerified) {
-          throw new BadRequestException('Email is already verified');
+        // If user exists and has a valid session
+        if (existingUser?.lastVerificationAt) {
+          const lastVerificationDate = new Date(existingUser.lastVerificationAt);
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+          // If session is still valid and user is verified
+          if (lastVerificationDate > thirtyDaysAgo && existingUser.emailVerified) {
+            return {
+              requestId: email,
+              isNewUser: false,
+              needsOnboarding: !existingUser.onboardingComplete,
+            };
+          }
         }
 
         try {
@@ -69,7 +87,11 @@ export class AuthService {
             otp,
           });
 
-          return { requestId: email };
+          return {
+            requestId: email,
+            isNewUser: !existingUser,
+            needsOnboarding: existingUser ? !existingUser.onboardingComplete : true,
+          };
         } catch (error) {
           if (error instanceof Error) {
             throw new InternalServerErrorException({
@@ -83,18 +105,34 @@ export class AuthService {
       }
 
       if (phoneNumber) {
-        // Check if user exists and is already verified
+        // Check if user exists
         const existingUser = await this.prisma.user.findUnique({
           where: { phoneNumber },
         });
 
-        if (existingUser?.phoneVerified) {
-          throw new BadRequestException('Phone number is already verified');
+        // If user exists and has a valid session
+        if (existingUser?.lastVerificationAt) {
+          const lastVerificationDate = new Date(existingUser.lastVerificationAt);
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+          // If session is still valid and user is verified
+          if (lastVerificationDate > thirtyDaysAgo && existingUser.phoneVerified) {
+            return {
+              requestId: phoneNumber,
+              isNewUser: false,
+              needsOnboarding: !existingUser.onboardingComplete,
+            };
+          }
         }
 
         try {
           await this.notificationService.sendVerificationSMS(phoneNumber, {});
-          return { requestId: phoneNumber };
+          return {
+            requestId: phoneNumber,
+            isNewUser: !existingUser,
+            needsOnboarding: existingUser ? !existingUser.onboardingComplete : true,
+          };
         } catch (error) {
           if (error instanceof Error) {
             throw new InternalServerErrorException({
@@ -113,7 +151,6 @@ export class AuthService {
         throw error;
       }
 
-      // Log the full error for debugging
       console.error('Auth initiation error:', error);
 
       throw new InternalServerErrorException({
@@ -189,21 +226,10 @@ export class AuthService {
     return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
   }
 
-  async uploadPhoto(userId: string, file: Express.Multer.File): Promise<{ url: string }> {
+  async uploadPhoto(file: Express.Multer.File): Promise<{ url: string }> {
     const base64String = file.buffer.toString('base64');
     const dataURI = `data:${file.mimetype};base64,${base64String}`;
     const result = await this.cloudinaryService.uploadImage(dataURI);
-    await this.prisma.userPhoto.create({
-      data: {
-        url: result.url,
-        isProfilePicture: true,
-        user: {
-          connect: {
-            id: userId,
-          },
-        },
-      },
-    });
     return { url: result.url };
   }
 
