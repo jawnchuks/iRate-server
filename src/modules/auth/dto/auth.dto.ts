@@ -1,6 +1,8 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEmail,
   IsString,
+  IsNotEmpty,
+  IsEmail,
   IsOptional,
   IsPhoneNumber,
   IsNumber,
@@ -10,7 +12,6 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Gender } from '@prisma/client';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class InitiateAuthDto {
   @ApiPropertyOptional({
@@ -67,62 +68,114 @@ export class VerifyOtpDto {
   phoneNumber?: string;
 }
 
+export class OtpVerificationDto {
+  @ApiProperty({
+    description: 'Email or phone number used for verification',
+    example: 'user@example.com',
+  })
+  @IsNotEmpty()
+  @IsString()
+  identifier: string = '';
+
+  @ApiProperty({
+    description: 'One-time password received via email or SMS',
+    example: '1234',
+  })
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(4)
+  @MaxLength(6)
+  otp: string = '';
+}
+
+export class OtpResendDto {
+  @ApiProperty({
+    description: 'Email or phone number to resend OTP to',
+    example: 'user@example.com',
+  })
+  @IsNotEmpty()
+  @IsString()
+  identifier: string = '';
+}
+
 export class OnboardingDto {
+  @ApiProperty({
+    description: 'Request ID from the verification process',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsNotEmpty()
+  @IsString()
+  requestId: string = '';
+
   @ApiProperty({
     description: "User's first name",
     example: 'John',
   })
+  @IsNotEmpty()
   @IsString()
-  firstName!: string;
+  firstName: string = '';
 
   @ApiProperty({
     description: "User's last name",
     example: 'Doe',
   })
+  @IsNotEmpty()
   @IsString()
-  lastName!: string;
+  lastName: string = '';
 
   @ApiProperty({
     description: "User's age",
     example: 25,
-    minimum: 18,
   })
+  @IsNotEmpty()
   @IsNumber()
-  age!: number;
+  age: number = 0;
 
   @ApiProperty({
     description: "User's gender",
-    enum: Gender,
-    example: Gender.MALE,
+    enum: ['MALE', 'FEMALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'],
+    example: 'MALE',
   })
+  @IsNotEmpty()
   @IsEnum(Gender)
-  gender!: Gender;
+  gender: Gender = Gender.OTHER;
 
   @ApiProperty({
-    description: 'Array of strings describing the user',
-    example: ['Adventurous', 'Creative', 'Friendly'],
-    type: [String],
+    description: 'Array of self-description tags',
+    example: ['Friendly', 'Outgoing', 'Creative'],
   })
+  @IsNotEmpty()
   @IsArray()
   @IsString({ each: true })
-  selfDescription!: string[];
+  selfDescription: string[] = [];
 
   @ApiProperty({
-    description: 'Array of values the user looks for in others',
-    example: ['Honesty', 'Intelligence', 'Kindness'],
-    type: [String],
+    description: 'Array of values user looks for in others',
+    example: ['Honesty', 'Kindness', 'Intelligence'],
   })
+  @IsNotEmpty()
   @IsArray()
   @IsString({ each: true })
-  valuesInOthers!: string[];
+  valuesInOthers: string[] = [];
 
   @ApiProperty({
-    description: "User's profile visibility setting",
-    example: 'public',
-    enum: ['public', 'private', 'friends'],
+    description: 'User visibility preferences',
+    example: {
+      isVisibleInSearch: true,
+      isVisibleToNearby: true,
+      isVisibleToRecommended: true,
+    },
   })
-  @IsString()
-  visibility!: string;
+  @IsNotEmpty()
+  visibility: {
+    isVisibleInSearch: boolean;
+    isVisibleToNearby: boolean;
+    isVisibleToRecommended: boolean;
+  } = {
+    isVisibleInSearch: true,
+    isVisibleToNearby: true,
+    isVisibleToRecommended: true,
+  };
 }
 
 export class RefreshTokenDto {

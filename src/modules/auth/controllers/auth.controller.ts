@@ -7,8 +7,6 @@ import {
   HttpStatus,
   UploadedFile,
   UseInterceptors,
-  BadRequestException,
-  InternalServerErrorException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from '../services/auth.service';
@@ -16,7 +14,7 @@ import { UserService } from '../../users/services/user.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from '../guards/roles.guard';
 import { Roles, UserRole } from '../decorators/roles.decorator';
-import { OnboardingDto, InitiateAuthDto, VerifyOtpDto } from '../dto/auth.dto';
+import { OnboardingDto, InitiateAuthDto } from '../dto/auth.dto';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiResponse } from '@nestjs/swagger';
 import {
@@ -29,6 +27,12 @@ import {
 } from '../../../common/dto';
 import { UserProfileDto } from '../../users/dto/user-response.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
+import {
+  PhotoUploadResponseDto,
+  OtpVerificationResponseDto,
+  OtpResendResponseDto,
+} from '../dto/auth-response.dto';
+import { OtpVerificationDto, OtpResendDto } from '../dto/auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -116,129 +120,59 @@ export class AuthController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async verifyOtp(@Body() dto: VerifyOtpDto): Promise<BaseResponseDto<AuthResponseDto>> {
-    const data = await this.authService.verifyOtp(dto);
-    return new BaseResponseDto(HttpStatus.OK, 'OTP verified successfully', data);
+  async verifyOtp(@Body() dto: OtpVerificationDto): Promise<OtpVerificationResponseDto> {
+    return this.authService.verifyOtp(dto);
   }
 
   @Post('onboarding')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Complete user onboarding',
-    description: 'Complete the user onboarding process with additional information',
-  })
+  @ApiOperation({ summary: 'Complete user onboarding' })
   @ApiResponse({
     status: 200,
     description: 'Onboarding completed successfully',
-    schema: {
-      allOf: [
-        { $ref: '#/components/schemas/BaseResponseDto' },
-        {
-          properties: {
-            data: {
-              $ref: '#/components/schemas/AuthResponseDto',
-            },
-          },
-        },
-      ],
-    },
+    type: AuthResponseDto,
   })
   @ApiResponse({
     status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
+    description: 'Invalid request data or missing required fields',
   })
   @ApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
+    status: 404,
+    description: 'User not found',
   })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async completeOnboarding(
-    @CurrentUser() user: { sub: string },
-    @Body() dto: OnboardingDto,
-  ): Promise<BaseResponseDto<AuthResponseDto>> {
-    const data = await this.authService.completeOnboarding(user.sub, dto);
-    return new BaseResponseDto(HttpStatus.OK, 'Onboarding completed successfully', data);
+  async completeOnboarding(@Body() dto: OnboardingDto): Promise<AuthResponseDto> {
+    return this.authService.completeOnboarding(dto.requestId, dto);
   }
 
   @Post('upload-photo')
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary: 'Upload profile photos',
-    description:
-      'Upload one or more photos for the user profile. The first photo will be used as the profile picture.',
-  })
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload a photo during onboarding' })
   @ApiResponse({
     status: 200,
-    description: 'Photos uploaded successfully',
-    type: BaseResponseDto,
-    schema: {
-      properties: {
-        statusCode: { type: 'number', example: 200 },
-        message: { type: 'string', example: 'Photos uploaded successfully' },
-        data: {
-          type: 'object',
-          properties: {
-            photoUrls: {
-              type: 'array',
-              items: { type: 'string' },
-              example: ['https://example.com/photo1.jpg', 'https://example.com/photo2.jpg'],
-            },
-          },
-        },
-      },
-    },
+    description: 'Photo uploaded successfully',
+    type: PhotoUploadResponseDto,
   })
-  @UseInterceptors(
-    FileInterceptor('file', {
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB limit
-      },
-      fileFilter: (req, file, callback) => {
-        console.log('Received file:', file);
-        if (!file.mimetype.startsWith('image/')) {
-          return callback(new Error('Only image files are allowed!'), false);
-        }
-        callback(null, true);
-      },
-    }),
-  )
-  async uploadPhoto(
-    @UploadedFile() file: Express.Multer.File,
-  ): Promise<BaseResponseDto<{ photoUrls: string[] }>> {
-    try {
-      console.log('Processing file upload:', {
-        fieldname: file?.fieldname,
-        originalname: file?.originalname,
-        mimetype: file?.mimetype,
-        size: file?.size,
-        buffer: file?.buffer ? 'Buffer present' : 'No buffer',
-      });
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid file or upload failed',
+  })
+  async uploadPhoto(@UploadedFile() file: Express.Multer.File): Promise<PhotoUploadResponseDto> {
+    return this.authService.uploadPhoto(file);
+  }
 
-      if (!file || !file.buffer) {
-        throw new BadRequestException('No file uploaded');
-      }
-
-      const data = await this.authService.uploadPhoto(file);
-      return new BaseResponseDto(HttpStatus.OK, 'Photo uploaded successfully', {
-        photoUrls: [data.url],
-      });
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      throw new InternalServerErrorException({
-        message: 'Failed to upload photo',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-    }
+  @Post('resend-otp')
+  @ApiOperation({ summary: 'Resend OTP for verification' })
+  @ApiResponse({
+    status: 200,
+    description: 'OTP resent successfully',
+    type: OtpResendResponseDto,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid request or rate limit exceeded',
+  })
+  async resendOtp(@Body() dto: OtpResendDto): Promise<OtpResendResponseDto> {
+    return this.authService.resendOtp(dto);
   }
 
   @Post('logout')

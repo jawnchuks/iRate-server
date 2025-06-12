@@ -7,10 +7,21 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { UserRole } from '@prisma/client';
-import { OnboardingDto, InitiateAuthDto, VerifyOtpDto, RefreshTokenDto } from '../dto';
+import {
+  OnboardingDto,
+  InitiateAuthDto,
+  RefreshTokenDto,
+  OtpVerificationDto,
+  OtpResendDto,
+} from '../dto/auth.dto';
 import { GoogleOAuthService } from './google-oauth.service';
 import { CloudinaryService } from 'src/common/utils/cloudinary';
-import { AuthResponseDto } from '../dto/auth-response.dto';
+import {
+  AuthResponseDto,
+  PhotoUploadResponseDto,
+  OtpVerificationResponseDto,
+  OtpResendResponseDto,
+} from '../dto/auth-response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { RedisService } from '../../redis/redis.service';
@@ -162,65 +173,41 @@ export class AuthService {
     }
   }
 
-  async verifyOtp(dto: VerifyOtpDto): Promise<AuthResponseDto> {
-    const { email, phoneNumber, otp } = dto;
+  async verifyOtp(dto: OtpVerificationDto): Promise<OtpVerificationResponseDto> {
+    const { identifier, otp } = dto;
 
-    if (email) {
-      const isValid = await this.redisService.verifyOTP(email, otp);
-      if (!isValid) {
-        throw new UnauthorizedException('Invalid or expired OTP');
-      }
-
-      const user = await this.prisma.user.upsert({
-        where: { email },
-        update: { emailVerified: true },
-        create: {
-          email,
-          roles: [UserRole.USER],
-          emailVerified: true,
-        },
-      });
-
-      const tokens = await this.generateTokens(user);
-      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
+    const isValid = await this.redisService.verifyOTP(identifier, otp);
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid or expired OTP');
     }
 
-    if (phoneNumber) {
-      const isValid = await this.redisService.verifyOTP(phoneNumber, otp);
-      if (!isValid) {
-        throw new UnauthorizedException('Invalid or expired OTP');
-      }
+    // Generate a request ID for the next step
+    const requestId = crypto.randomUUID();
+    await this.redisService.storeRequestId(identifier, requestId);
 
-      const user = await this.prisma.user.upsert({
-        where: { phoneNumber },
-        update: { phoneVerified: true },
-        create: {
-          phoneNumber,
-          roles: [UserRole.USER],
-          phoneVerified: true,
-        },
-      });
-
-      const tokens = await this.generateTokens(user);
-      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
-    }
-
-    throw new BadRequestException('Either email or phoneNumber must be provided');
+    return new OtpVerificationResponseDto(true, requestId);
   }
 
-  async completeOnboarding(userId: string, dto: OnboardingDto): Promise<AuthResponseDto> {
+  async completeOnboarding(requestId: string, dto: OnboardingDto): Promise<AuthResponseDto> {
     try {
+      // Find the user by their requestId (email or phone)
+      const user = await this.prisma.user.findFirst({
+        where: {
+          OR: [{ email: requestId }, { phoneNumber: requestId }],
+        },
+      });
+
+      if (!user) {
+        throw new BadRequestException('User not found. Please complete verification first.');
+      }
+
       // Get the user's temporary uploads from Redis
       const uploadIds: string[] = await this.redisService.getUploadIds();
       const uploadedPhotos = await Promise.all(
         uploadIds.map(async (uploadId: string) => {
           const uploadData = await this.redisService.getUploadData(uploadId);
           if (!uploadData) return null;
-
-          // Move the photo from temporary to permanent storage
-          const result = await this.cloudinaryService.uploadProfilePicture(uploadData.url, userId);
-
-          return result.url;
+          return uploadData.url;
         }),
       );
 
@@ -230,9 +217,115 @@ export class AuthService {
         throw new BadRequestException('At least one photo is required');
       }
 
-      // Update user profile with photos
-      const user = await this.prisma.user.update({
-        where: { id: userId },
+      // Calculate profile completion percentage based on all user-inputtable fields
+      const profileFields = {
+        // Basic Info (Required)
+        firstName: !!dto.firstName,
+        lastName: !!dto.lastName,
+        dob: !!dto.age, // Age is converted to DOB
+        gender: !!dto.gender,
+
+        // Profile Photos (Required at least 1, optimal 4)
+        photos: {
+          hasPhotos: validPhotos.length > 0,
+          optimalPhotos: validPhotos.length >= 4,
+          weight: 2, // Photos are important, so they get double weight
+        },
+
+        // Self Description (Required)
+        selfDescription: {
+          hasDescription: dto.selfDescription?.length > 0,
+          optimalDescription: dto.selfDescription?.length >= 3,
+          weight: 1.5,
+        },
+
+        // Values in Others (Required)
+        valuesInOthers: {
+          hasValues: dto.valuesInOthers?.length > 0,
+          optimalValues: dto.valuesInOthers?.length >= 3,
+          weight: 1.5,
+        },
+
+        // Visibility Settings (Required)
+        visibility: !!dto.visibility,
+
+        // Additional Profile Fields (Optional but contribute to completion)
+        bio: false, // Will be updated in profile
+        interests: false, // Will be updated in profile
+        location: false, // Will be updated in profile
+        nationality: false, // Will be updated in profile
+        zodiacSign: false, // Will be updated in profile
+        profession: false, // Will be updated in profile
+        education: false, // Will be updated in profile
+        languages: false, // Will be updated in profile
+        relationshipGoals: false, // Will be updated in profile
+        lookingFor: false, // Will be updated in profile
+        dealBreakers: false, // Will be updated in profile
+        hobbies: false, // Will be updated in profile
+        socialLinks: false, // Will be updated in profile
+        verificationStatus: false, // Will be updated through verification process
+      };
+
+      // Calculate weighted completion percentage
+      const weights = {
+        required: 1,
+        photos: 2,
+        description: 1.5,
+        values: 1.5,
+        optional: 0.5,
+      };
+
+      const requiredFields = [
+        profileFields.firstName,
+        profileFields.lastName,
+        profileFields.dob,
+        profileFields.gender,
+        profileFields.visibility,
+        profileFields.photos.hasPhotos,
+        profileFields.selfDescription.hasDescription,
+        profileFields.valuesInOthers.hasValues,
+      ];
+
+      const optimalFields = [
+        profileFields.photos.optimalPhotos,
+        profileFields.selfDescription.optimalDescription,
+        profileFields.valuesInOthers.optimalValues,
+      ];
+
+      const optionalFields = [
+        profileFields.bio,
+        profileFields.interests,
+        profileFields.location,
+        profileFields.nationality,
+        profileFields.zodiacSign,
+        profileFields.profession,
+        profileFields.education,
+        profileFields.languages,
+        profileFields.relationshipGoals,
+        profileFields.lookingFor,
+        profileFields.dealBreakers,
+        profileFields.hobbies,
+        profileFields.socialLinks,
+        profileFields.verificationStatus,
+      ];
+
+      // Calculate weighted scores
+      const requiredScore =
+        (requiredFields.filter(Boolean).length / requiredFields.length) * weights.required;
+      const optimalScore =
+        (optimalFields.filter(Boolean).length / optimalFields.length) * weights.photos;
+      const optionalScore =
+        (optionalFields.filter(Boolean).length / optionalFields.length) * weights.optional;
+
+      // Calculate total weighted percentage
+      const totalWeight = weights.required + weights.photos + weights.optional;
+      const profileCompletionPercentage = Math.round(
+        ((requiredScore + optimalScore + optionalScore) / totalWeight) * 100,
+      );
+
+      // Update user with onboarding data and photos
+      const updatedUser = await this.prisma.user.update({
+        where: { id: user.id },
         data: {
           firstName: dto.firstName,
           lastName: dto.lastName,
@@ -242,6 +335,7 @@ export class AuthService {
           valuesInOthers: dto.valuesInOthers,
           visibility: dto.visibility,
           onboardingComplete: true,
+          profileCompletionPercentage,
           // Create profile photos
           profilePhotos: {
             create: validPhotos.map((url: string, index: number) => ({
@@ -258,54 +352,38 @@ export class AuthService {
       // Clean up temporary uploads
       await Promise.all(
         uploadIds.map((uploadId: string) =>
-          this.cloudinaryService.cleanupTemporaryFolder(userId, uploadId),
+          this.cloudinaryService.cleanupTemporaryFolder(user.id, uploadId),
         ),
       );
       await this.redisService.clearUploadIds();
 
-      const tokens = await this.generateTokens(user);
-      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
+      const tokens = await this.generateTokens(updatedUser);
+      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, updatedUser);
     } catch (error) {
       console.error('Error completing onboarding:', error);
       throw error;
     }
   }
 
-  async uploadPhoto(file: Express.Multer.File): Promise<{ url: string }> {
+  async uploadPhoto(file: Express.Multer.File): Promise<PhotoUploadResponseDto> {
     try {
-      if (!file || !file.buffer) {
-        throw new BadRequestException('Invalid file data');
-      }
+      // Upload to Cloudinary
+      const uploadResult = await this.cloudinaryService.uploadFile(file);
 
-      const base64String = file.buffer.toString('base64');
-      const dataURI = `data:${file.mimetype};base64,${base64String}`;
-
-      // During onboarding, we'll use a temporary folder
+      // Generate a unique upload ID
       const uploadId = crypto.randomUUID();
-      const result = await this.cloudinaryService.uploadTemporaryPhoto(
-        dataURI,
-        'onboarding',
-        uploadId,
-      );
 
-      if (!result || !result.url) {
-        throw new InternalServerErrorException('Failed to upload image to Cloudinary');
-      }
-
-      // Store the uploadId in Redis for later cleanup if needed
+      // Store the upload data in Redis
       await this.redisService.storeUploadId(uploadId, {
-        url: result.url,
+        url: uploadResult.secure_url,
         timestamp: new Date().toISOString(),
       });
 
-      return { url: result.url };
+      return new PhotoUploadResponseDto(uploadId, uploadResult.secure_url);
     } catch (error) {
-      console.error('Error in uploadPhoto service:', error);
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
+      console.error('Photo upload error:', error);
       throw new InternalServerErrorException({
-        message: 'Failed to process photo upload',
+        message: 'Failed to upload photo',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
@@ -391,5 +469,32 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async resendOtp(dto: OtpResendDto): Promise<OtpResendResponseDto> {
+    const { identifier } = dto;
+
+    // Check if we can resend OTP
+    const canResend = await this.redisService.canResendOTP(identifier);
+    if (!canResend) {
+      throw new BadRequestException('Too many OTP resend attempts. Please try again later.');
+    }
+
+    // Generate new OTP
+    const otp = Math.floor(1000 + Math.random() * 9000).toString();
+    await this.redisService.storeOTP(identifier, otp);
+    await this.redisService.incrementResendCount(identifier);
+
+    // Send OTP via email or SMS
+    if (identifier.includes('@')) {
+      await this.notificationService.sendVerificationEmail(identifier, {
+        name: 'User',
+        otp,
+      });
+    } else {
+      await this.notificationService.sendVerificationSMS(identifier, { otp });
+    }
+
+    return new OtpResendResponseDto(identifier, 300); // 5 minutes expiry
   }
 }
