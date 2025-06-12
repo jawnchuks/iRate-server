@@ -2,11 +2,18 @@ import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
+interface UploadData {
+  url: string;
+  timestamp: string;
+}
+
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   private readonly redis: Redis;
   private readonly OTP_PREFIX = 'otp:';
   private readonly OTP_EXPIRY = 300; // 5 minutes
+  private readonly uploadIdsKey = 'upload_ids';
+  private readonly uploadDataPrefix = 'upload_data:';
   private readonly logger = new Logger(RedisService.name);
 
   constructor(private configService: ConfigService) {
@@ -104,6 +111,37 @@ export class RedisService implements OnModuleDestroy {
     const isValid = storedOTP === otp;
     if (isValid) await this.del(key);
     return isValid;
+  }
+
+  async storeUploadId(uploadId: string, data: UploadData): Promise<void> {
+    // Store the upload ID in a set
+    await this.redis.sadd(this.uploadIdsKey, uploadId);
+    // Store the upload data with the upload ID as key
+    await this.redis.set(
+      `${this.uploadDataPrefix}${uploadId}`,
+      JSON.stringify(data),
+      'EX',
+      3600, // 1 hour expiry
+    );
+  }
+
+  async getUploadIds(): Promise<string[]> {
+    return this.redis.smembers(this.uploadIdsKey);
+  }
+
+  async getUploadData(uploadId: string): Promise<UploadData | null> {
+    const data = await this.redis.get(`${this.uploadDataPrefix}${uploadId}`);
+    return data ? JSON.parse(data) : null;
+  }
+
+  async clearUploadIds(): Promise<void> {
+    const uploadIds = await this.getUploadIds();
+    if (uploadIds.length > 0) {
+      // Delete all upload data
+      await Promise.all(uploadIds.map((id) => this.redis.del(`${this.uploadDataPrefix}${id}`)));
+      // Delete the upload IDs set
+      await this.redis.del(this.uploadIdsKey);
+    }
   }
 
   // Add other Redis methods as needed

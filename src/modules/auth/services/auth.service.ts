@@ -209,22 +209,66 @@ export class AuthService {
   }
 
   async completeOnboarding(userId: string, dto: OnboardingDto): Promise<AuthResponseDto> {
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        firstName: dto.firstName,
-        lastName: dto.lastName,
-        dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000),
-        gender: dto.gender,
-        selfDescription: dto.selfDescription,
-        valuesInOthers: dto.valuesInOthers,
-        visibility: dto.visibility,
-        onboardingComplete: true,
-      },
-    });
+    try {
+      // Get the user's temporary uploads from Redis
+      const uploadIds: string[] = await this.redisService.getUploadIds();
+      const uploadedPhotos = await Promise.all(
+        uploadIds.map(async (uploadId: string) => {
+          const uploadData = await this.redisService.getUploadData(uploadId);
+          if (!uploadData) return null;
 
-    const tokens = await this.generateTokens(user);
-    return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
+          // Move the photo from temporary to permanent storage
+          const result = await this.cloudinaryService.uploadProfilePicture(uploadData.url, userId);
+
+          return result.url;
+        }),
+      );
+
+      // Filter out any null values and ensure we have at least one photo
+      const validPhotos = uploadedPhotos.filter((url): url is string => url !== null);
+      if (validPhotos.length === 0) {
+        throw new BadRequestException('At least one photo is required');
+      }
+
+      // Update user profile with photos
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          firstName: dto.firstName,
+          lastName: dto.lastName,
+          dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000),
+          gender: dto.gender,
+          selfDescription: dto.selfDescription,
+          valuesInOthers: dto.valuesInOthers,
+          visibility: dto.visibility,
+          onboardingComplete: true,
+          // Create profile photos
+          profilePhotos: {
+            create: validPhotos.map((url: string, index: number) => ({
+              url,
+              isProfilePicture: index === 0, // First photo is profile picture
+            })),
+          },
+        },
+        include: {
+          profilePhotos: true,
+        },
+      });
+
+      // Clean up temporary uploads
+      await Promise.all(
+        uploadIds.map((uploadId: string) =>
+          this.cloudinaryService.cleanupTemporaryFolder(userId, uploadId),
+        ),
+      );
+      await this.redisService.clearUploadIds();
+
+      const tokens = await this.generateTokens(user);
+      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, user);
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      throw error;
+    }
   }
 
   async uploadPhoto(file: Express.Multer.File): Promise<{ url: string }> {
@@ -247,6 +291,12 @@ export class AuthService {
       if (!result || !result.url) {
         throw new InternalServerErrorException('Failed to upload image to Cloudinary');
       }
+
+      // Store the uploadId in Redis for later cleanup if needed
+      await this.redisService.storeUploadId(uploadId, {
+        url: result.url,
+        timestamp: new Date().toISOString(),
+      });
 
       return { url: result.url };
     } catch (error) {
