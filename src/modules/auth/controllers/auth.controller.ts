@@ -7,6 +7,8 @@ import {
   HttpStatus,
   UploadedFile,
   UseInterceptors,
+  BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from '../services/auth.service';
@@ -198,14 +200,41 @@ export class AuthController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  @UseInterceptors(FileInterceptor('photo'))
+  @UseInterceptors(
+    FileInterceptor('photo', {
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB limit
+      },
+      fileFilter: (req, file, callback) => {
+        if (!file.mimetype.match(/^image\/(jpeg|png|jpg)$/)) {
+          return callback(new Error('Only image files are allowed!'), false);
+        }
+        callback(null, true);
+      },
+    }),
+  )
   async uploadPhoto(
     @UploadedFile() file: Express.Multer.File,
   ): Promise<BaseResponseDto<{ photoUrl: string }>> {
-    const data = await this.authService.uploadPhoto(file);
-    return new BaseResponseDto(HttpStatus.OK, 'Photo uploaded successfully', {
-      photoUrl: data.url,
-    });
+    try {
+      if (!file) {
+        throw new BadRequestException('No file uploaded');
+      }
+
+      const data = await this.authService.uploadPhoto(file);
+      return new BaseResponseDto(HttpStatus.OK, 'Photo uploaded successfully', {
+        photoUrl: data.url,
+      });
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException({
+        message: 'Failed to upload photo',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
   }
 
   @Post('logout')
