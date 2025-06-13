@@ -100,12 +100,29 @@ export class OtpResendDto {
 
 export class OnboardingDto {
   @ApiProperty({
-    description: 'Request ID from the verification process',
-    example: '123e4567-e89b-12d3-a456-426614174000',
+    description: 'Email address used for authentication',
+    example: 'user@example.com',
+  })
+  @IsOptional()
+  @IsEmail()
+  email: string = '';
+
+  @ApiProperty({
+    description: 'Phone number used for authentication',
+    example: '+1234567890',
+  })
+  @IsOptional()
+  @IsPhoneNumber()
+  phoneNumber?: string;
+
+  @ApiProperty({
+    description: 'Array of uploaded photo URLs',
+    example: ['https://cloudinary.com/image/upload/v1234567890/photo.jpg'],
   })
   @IsNotEmpty()
-  @IsString()
-  requestId: string = '';
+  @IsArray()
+  @IsString({ each: true })
+  photoUrls: string[] = [];
 
   @ApiProperty({
     description: "User's first name",

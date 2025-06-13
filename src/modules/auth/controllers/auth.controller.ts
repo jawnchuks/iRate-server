@@ -136,7 +136,7 @@ export class AuthController {
     description: 'User not found',
   })
   async completeOnboarding(@Body() dto: OnboardingDto): Promise<AuthResponseDto> {
-    return this.authService.completeOnboarding(dto.requestId, dto);
+    return this.authService.completeOnboarding(dto);
   }
 
   @Post('upload-photo')
