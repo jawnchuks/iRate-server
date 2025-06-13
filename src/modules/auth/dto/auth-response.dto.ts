@@ -119,9 +119,17 @@ export class PhotoUploadResponseDto {
   })
   url: string;
 
+  @ApiProperty({
+    description: 'Array of uploaded photo URLs',
+    type: [String],
+    example: ['https://cloudinary.com/image/upload/v1234567890/photo.jpg'],
+  })
+  photoUrls: string[];
+
   constructor(uploadId: string, url: string) {
     this.uploadId = uploadId;
     this.url = url;
+    this.photoUrls = [url];
   }
 }
 
