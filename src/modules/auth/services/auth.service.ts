@@ -174,16 +174,16 @@ export class AuthService {
   }
 
   async verifyOtp(dto: OtpVerificationDto): Promise<OtpVerificationResponseDto> {
-    const { identifier, otp } = dto;
+    const { email, otp } = dto;
 
-    const isValid = await this.redisService.verifyOTP(identifier, otp);
+    const isValid = await this.redisService.verifyOTP(email, otp);
     if (!isValid) {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
     // Generate a request ID for the next step
     const requestId = crypto.randomUUID();
-    await this.redisService.storeRequestId(identifier, requestId);
+    await this.redisService.storeRequestId(email, requestId);
 
     return new OtpVerificationResponseDto(true, requestId);
   }
