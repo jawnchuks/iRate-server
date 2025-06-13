@@ -205,12 +205,12 @@ export class AuthService {
     return new AuthResponseDto(accessToken, refreshToken, user);
   }
 
-  async completeOnboarding(requestId: string, dto: OnboardingDto): Promise<AuthResponseDto> {
+  async completeOnboarding(dto: OnboardingDto): Promise<AuthResponseDto> {
     try {
-      // Find the user by their requestId (email or phone)
+      // Find the user by email or phone
       const user = await this.prisma.user.findFirst({
         where: {
-          OR: [{ email: requestId }, { phoneNumber: requestId }],
+          OR: [{ email: dto.email }, { phoneNumber: dto.phoneNumber }],
         },
       });
 
@@ -218,146 +218,27 @@ export class AuthService {
         throw new BadRequestException('User not found. Please complete verification first.');
       }
 
-      // Get the user's temporary uploads from Redis
-      const uploadIds: string[] = await this.redisService.getUploadIds();
-      const uploadedPhotos = await Promise.all(
-        uploadIds.map(async (uploadId: string) => {
-          const uploadData = await this.redisService.getUploadData(uploadId);
-          if (!uploadData) return null;
-          return uploadData.url;
-        }),
-      );
-
-      // Filter out any null values and ensure we have at least one photo
-      const validPhotos = uploadedPhotos.filter((url): url is string => url !== null);
-      if (validPhotos.length === 0) {
+      // Ensure we have at least one photo
+      if (!dto.photoUrls || dto.photoUrls.length === 0) {
         throw new BadRequestException('At least one photo is required');
       }
 
-      // Calculate profile completion percentage based on all user-inputtable fields
-      const profileFields = {
-        // Basic Info (Required)
-        firstName: !!dto.firstName,
-        lastName: !!dto.lastName,
-        dob: !!dto.age, // Age is converted to DOB
-        gender: !!dto.gender,
-
-        // Profile Photos (Required at least 1, optimal 4)
-        photos: {
-          hasPhotos: validPhotos.length > 0,
-          optimalPhotos: validPhotos.length >= 4,
-          weight: 2, // Photos are important, so they get double weight
-        },
-
-        // Self Description (Required)
-        selfDescription: {
-          hasDescription: dto.selfDescription?.length > 0,
-          optimalDescription: dto.selfDescription?.length >= 3,
-          weight: 1.5,
-        },
-
-        // Values in Others (Required)
-        valuesInOthers: {
-          hasValues: dto.valuesInOthers?.length > 0,
-          optimalValues: dto.valuesInOthers?.length >= 3,
-          weight: 1.5,
-        },
-
-        // Visibility Settings (Required)
-        visibility: !!dto.visibility,
-
-        // Additional Profile Fields (Optional but contribute to completion)
-        bio: false, // Will be updated in profile
-        interests: false, // Will be updated in profile
-        location: false, // Will be updated in profile
-        nationality: false, // Will be updated in profile
-        zodiacSign: false, // Will be updated in profile
-        profession: false, // Will be updated in profile
-        education: false, // Will be updated in profile
-        languages: false, // Will be updated in profile
-        relationshipGoals: false, // Will be updated in profile
-        lookingFor: false, // Will be updated in profile
-        dealBreakers: false, // Will be updated in profile
-        hobbies: false, // Will be updated in profile
-        socialLinks: false, // Will be updated in profile
-        verificationStatus: false, // Will be updated through verification process
-      };
-
-      // Calculate weighted completion percentage
-      const weights = {
-        required: 1,
-        photos: 2,
-        description: 1.5,
-        values: 1.5,
-        optional: 0.5,
-      };
-
-      const requiredFields = [
-        profileFields.firstName,
-        profileFields.lastName,
-        profileFields.dob,
-        profileFields.gender,
-        profileFields.visibility,
-        profileFields.photos.hasPhotos,
-        profileFields.selfDescription.hasDescription,
-        profileFields.valuesInOthers.hasValues,
-      ];
-
-      const optimalFields = [
-        profileFields.photos.optimalPhotos,
-        profileFields.selfDescription.optimalDescription,
-        profileFields.valuesInOthers.optimalValues,
-      ];
-
-      const optionalFields = [
-        profileFields.bio,
-        profileFields.interests,
-        profileFields.location,
-        profileFields.nationality,
-        profileFields.zodiacSign,
-        profileFields.profession,
-        profileFields.education,
-        profileFields.languages,
-        profileFields.relationshipGoals,
-        profileFields.lookingFor,
-        profileFields.dealBreakers,
-        profileFields.hobbies,
-        profileFields.socialLinks,
-        profileFields.verificationStatus,
-      ];
-
-      // Calculate weighted scores
-      const requiredScore =
-        (requiredFields.filter(Boolean).length / requiredFields.length) * weights.required;
-      const optimalScore =
-        (optimalFields.filter(Boolean).length / optimalFields.length) * weights.photos;
-      const optionalScore =
-        (optionalFields.filter(Boolean).length / optionalFields.length) * weights.optional;
-
-      // Calculate total weighted percentage
-      const totalWeight = weights.required + weights.photos + weights.optional;
-      const profileCompletionPercentage = Math.round(
-        ((requiredScore + optimalScore + optionalScore) / totalWeight) * 100,
-      );
-
-      // Update user with onboarding data and photos
+      // Update user with onboarding data
       const updatedUser = await this.prisma.user.update({
         where: { id: user.id },
         data: {
           firstName: dto.firstName,
           lastName: dto.lastName,
-          dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000),
+          dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000), // Convert age to DOB
           gender: dto.gender,
           selfDescription: dto.selfDescription,
           valuesInOthers: dto.valuesInOthers,
           visibility: dto.visibility,
           onboardingComplete: true,
-          profileCompletionPercentage,
-          // Create profile photos
           profilePhotos: {
-            create: validPhotos.map((url: string, index: number) => ({
+            create: dto.photoUrls.map((url, index) => ({
               url,
-              isProfilePicture: index === 0, // First photo is profile picture
+              isProfilePicture: index === 0,
             })),
           },
         },
@@ -366,19 +247,19 @@ export class AuthService {
         },
       });
 
-      // Clean up temporary uploads
-      await Promise.all(
-        uploadIds.map((uploadId: string) =>
-          this.cloudinaryService.cleanupTemporaryFolder(user.id, uploadId),
-        ),
-      );
-      await this.redisService.clearUploadIds();
+      // Generate tokens
+      const { accessToken, refreshToken } = await this.generateTokens({
+        id: updatedUser.id,
+        email: updatedUser.email,
+        roles: updatedUser.roles,
+      });
 
-      const tokens = await this.generateTokens(updatedUser);
-      return new AuthResponseDto(tokens.accessToken, tokens.refreshToken, updatedUser);
+      return new AuthResponseDto(accessToken, refreshToken, updatedUser);
     } catch (error) {
-      console.error('Error completing onboarding:', error);
-      throw error;
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Failed to complete onboarding');
     }
   }
 
@@ -512,6 +393,6 @@ export class AuthService {
       await this.notificationService.sendVerificationSMS(identifier, { otp });
     }
 
-    return new OtpResendResponseDto(identifier, 300); // 5 minutes expiry
+    return new OtpResendResponseDto(identifier, 300);
   }
 }
