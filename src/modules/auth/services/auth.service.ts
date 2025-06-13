@@ -19,7 +19,6 @@ import { CloudinaryService } from 'src/common/utils/cloudinary';
 import {
   AuthResponseDto,
   PhotoUploadResponseDto,
-  OtpVerificationResponseDto,
   OtpResendResponseDto,
 } from '../dto/auth-response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
