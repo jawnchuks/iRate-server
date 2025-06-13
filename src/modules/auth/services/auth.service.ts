@@ -173,7 +173,7 @@ export class AuthService {
     }
   }
 
-  async verifyOtp(dto: OtpVerificationDto): Promise<OtpVerificationResponseDto> {
+  async verifyOtp(dto: OtpVerificationDto): Promise<AuthResponseDto> {
     const { email, otp } = dto;
 
     const isValid = await this.redisService.verifyOTP(email, otp);
@@ -181,11 +181,29 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired OTP');
     }
 
-    // Generate a request ID for the next step
-    const requestId = crypto.randomUUID();
-    await this.redisService.storeRequestId(email, requestId);
+    // Find or create user
+    const user = await this.prisma.user.upsert({
+      where: { email },
+      update: {
+        emailVerified: true,
+        lastVerificationAt: new Date(),
+      },
+      create: {
+        email,
+        emailVerified: true,
+        lastVerificationAt: new Date(),
+        roles: [UserRole.USER],
+      },
+    });
 
-    return new OtpVerificationResponseDto(true, requestId);
+    // Generate tokens
+    const { accessToken, refreshToken } = await this.generateTokens({
+      id: user.id,
+      email: user.email,
+      roles: user.roles,
+    });
+
+    return new AuthResponseDto(accessToken, refreshToken, user);
   }
 
   async completeOnboarding(requestId: string, dto: OnboardingDto): Promise<AuthResponseDto> {
