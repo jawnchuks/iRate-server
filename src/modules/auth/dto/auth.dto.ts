@@ -70,15 +70,15 @@ export class VerifyOtpDto {
 
 export class OtpVerificationDto {
   @ApiProperty({
-    description: 'Email or phone number used for verification',
+    description: 'Email address used for verification',
     example: 'user@example.com',
   })
   @IsNotEmpty()
-  @IsString()
-  identifier: string = '';
+  @IsEmail()
+  email: string = '';
 
   @ApiProperty({
-    description: 'One-time password received via email or SMS',
+    description: 'One-time password received via email',
     example: '1234',
   })
   @IsNotEmpty()
