@@ -27,11 +27,7 @@ import {
 } from '../../../common/dto';
 import { UserProfileDto } from '../../users/dto/user-response.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
-import {
-  PhotoUploadResponseDto,
-  OtpVerificationResponseDto,
-  OtpResendResponseDto,
-} from '../dto/auth-response.dto';
+import { PhotoUploadResponseDto, OtpResendResponseDto } from '../dto/auth-response.dto';
 import { OtpVerificationDto, OtpResendDto } from '../dto/auth.dto';
 
 @ApiTags('auth')
