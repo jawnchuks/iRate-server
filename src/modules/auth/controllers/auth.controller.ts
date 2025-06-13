@@ -27,11 +27,7 @@ import {
 } from '../../../common/dto';
 import { UserProfileDto } from '../../users/dto/user-response.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
-import {
-  PhotoUploadResponseDto,
-  OtpVerificationResponseDto,
-  OtpResendResponseDto,
-} from '../dto/auth-response.dto';
+import { PhotoUploadResponseDto, OtpResendResponseDto } from '../dto/auth-response.dto';
 import { OtpVerificationDto, OtpResendDto } from '../dto/auth.dto';
 
 @ApiTags('auth')
@@ -120,7 +116,7 @@ export class AuthController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async verifyOtp(@Body() dto: OtpVerificationDto): Promise<OtpVerificationResponseDto> {
+  async verifyOtp(@Body() dto: OtpVerificationDto): Promise<AuthResponseDto> {
     return this.authService.verifyOtp(dto);
   }
 
