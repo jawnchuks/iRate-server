@@ -120,7 +120,7 @@ export class AuthController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async verifyOtp(@Body() dto: OtpVerificationDto): Promise<OtpVerificationResponseDto> {
+  async verifyOtp(@Body() dto: OtpVerificationDto): Promise<AuthResponseDto> {
     return this.authService.verifyOtp(dto);
   }
 
