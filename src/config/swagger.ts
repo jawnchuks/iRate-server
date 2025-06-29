@@ -27,8 +27,7 @@ export const swaggerConfig = new DocumentBuilder()
     'JWT-auth',
   )
   .addServer('http://localhost:9000', 'Local Development')
-  .addServer('https://api.irate.com', 'Production')
-  .addServer('https://irate-server-production.up.railway.app/', 'Staging')
+  .addServer('https://irate-server.onrender.com', 'Production')
   .build();
 
 export const swaggerCustomOptions: SwaggerCustomOptions = {
