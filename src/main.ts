@@ -48,8 +48,7 @@ async function bootstrap() {
       origin: [
         'http://localhost:9000',
         'http://localhost:3000',
-        'https://irate-server-production.up.railway.app',
-        'https://irate-server.up.railway.app',
+        'https://irate-server.onrender.com',
         /\.railway\.app$/,
         /\.expo\.dev$/,
         'exp://localhost:19000',
