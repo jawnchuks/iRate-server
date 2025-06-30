@@ -49,6 +49,15 @@ export class SubscriptionsService {
   ): Promise<SubscriptionResponseDto> {
     const plan = await this.prisma.subscriptionPlan.findUnique({
       where: { id: dto.planId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        type: true,
+        messagesPerMonth: true,
+        isActive: true,
+      },
     });
 
     if (!plan) {
@@ -83,6 +92,8 @@ export class SubscriptionsService {
         endDate,
         messagesUsed: 0,
         autoRenew: true,
+        tier: 'STANDARD',
+        benefits: [],
       },
     });
 

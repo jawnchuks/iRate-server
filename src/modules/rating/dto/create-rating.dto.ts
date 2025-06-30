@@ -20,12 +20,4 @@ export class CreateRatingDto {
   @Min(1)
   @Max(10)
   score!: number;
-
-  @ApiProperty({
-    description: 'Optional review about the rating',
-    example: 'Great conversation and very friendly!',
-    required: false,
-  })
-  @IsString()
-  review?: string;
 }

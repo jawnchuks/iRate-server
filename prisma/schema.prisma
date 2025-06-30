@@ -56,6 +56,10 @@ enum MessageType {
   IMAGE
   VIDEO
   AUDIO
+  FILE
+  VOICE_NOTE
+  CALL
+  SYSTEM
 }
 
 enum ChatRequestStatus {
@@ -84,6 +88,11 @@ enum SubscriptionStatus {
   CANCELLED
   EXPIRED
   PENDING
+}
+
+enum SubscriptionTier {
+  STANDARD
+  PREMIUM
 }
 
 model User {
@@ -121,10 +130,9 @@ model User {
   roles                       UserRole[]           @default([USER])
   givenRatings                Rating[]             @relation("RaterToRating")
   receivedRatings             Rating[]             @relation("TargetToRating")
-  messages                    Message[]            @relation("MessageSender")
+  messages                    Message[]            @relation("UserMessages")
   notifications               Notification[]
-  conversations1              Conversation[]       @relation("ConversationParticipant1")
-  conversations2              Conversation[]       @relation("ConversationParticipant2")
+  conversations               Conversation[]       @relation("ConversationParticipants")
   media                       Media[]
   isActive                    Boolean              @default(true)
   deactivatedAt               DateTime?
@@ -147,6 +155,19 @@ model User {
   sentChatRequests     ChatRequest[] @relation("SenderToRequest")
   receivedChatRequests ChatRequest[] @relation("ReceiverToRequest")
   subscriptions         Subscription[]
+  nationality             String?
+  religion              String?
+  ethnicity             String?
+  zodiacSign            String?
+  relationshipStatus    String?
+  school                String?
+  work                  String?
+  biggestWin            String?
+  mission               String?
+  energyEmoji           String?
+  passions             String[]
+  vibeCheckAnswers      Json?
+  coins                 Int?
   @@index([email])
   @@index([isVerified])
   @@index([isActive])
@@ -178,24 +199,25 @@ model Rating {
 
 model Message {
   id             String       @id @default(uuid())
-  content        String
-  type           MessageType  @default(TEXT)
-  senderId       String
   conversationId String
-  sender         User         @relation("MessageSender", fields: [senderId], references: [id])
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  attachments    Attachment[]
-  reactions      Reaction[]
+  senderId       String
+  content        String?
+  type           MessageType  @default(TEXT)
+  mediaUrl       String?
+  viewOnce       Boolean      @default(false)
+  expiresAt      DateTime?
+  isRead         Boolean      @default(false)
   isDeleted      Boolean      @default(false)
   deletedAt      DateTime?
   isEdited       Boolean      @default(false)
   editedAt       DateTime?
-  read           Boolean      @default(false)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
-
-  @@index([senderId])
-  @@index([conversationId])
+  attachments    Attachment[] @relation("MessageAttachments")
+  reactions      Reaction[]   @relation("MessageReactions")
+  events         MessageEvent[] @relation("MessageEvents")
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         User         @relation("UserMessages", fields: [senderId], references: [id])
 }
 
 model Notification {
@@ -215,20 +237,14 @@ model Notification {
 }
 
 model Conversation {
-  id             String       @id @default(uuid())
-  participant1Id String
-  participant2Id String
-  participant1   User         @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
-  participant2   User         @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
-  messages       Message[]
-  attachments    Attachment[] @relation("ConversationAttachments")
-  isGroup        Boolean      @default(false)
-  groupName      String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  @@index([participant1Id])
-  @@index([participant2Id])
+  id           String   @id @default(uuid())
+  isGroup      Boolean  @default(false)
+  groupName    String?
+  participants User[]   @relation("ConversationParticipants")
+  messages     Message[]
+  calls        Call[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Media {
@@ -245,16 +261,14 @@ model Media {
 }
 
 model Attachment {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   url            String
-  type           String // image, video, file, etc.
+  type           String   // image, video, audio, file, etc.
   name           String
   size           Int
   messageId      String?
-  message        Message?     @relation(fields: [messageId], references: [id])
-  conversationId String
-  conversation   Conversation @relation("ConversationAttachments", fields: [conversationId], references: [id])
-  createdAt      DateTime     @default(now())
+  message        Message? @relation("MessageAttachments", fields: [messageId], references: [id])
+  createdAt      DateTime @default(now())
 }
 
 model Reaction {
@@ -262,9 +276,30 @@ model Reaction {
   emoji     String
   userId    String
   messageId String
-  message   Message  @relation(fields: [messageId], references: [id])
+  message   Message  @relation("MessageReactions", fields: [messageId], references: [id])
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model MessageEvent {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  type      String   // VIEWED, SCREENSHOT, DELETED, etc.
+  message   Message  @relation("MessageEvents", fields: [messageId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Call {
+  id             String       @id @default(uuid())
+  conversationId String
+  initiatorId    String
+  receiverId     String
+  type           String       // AUDIO, VIDEO
+  status         String       // INITIATED, ACCEPTED, ENDED, MISSED
+  startedAt      DateTime
+  endedAt        DateTime?
+  metadata       Json?
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
 }
 
 model UserPhoto {
@@ -388,6 +423,8 @@ model Subscription {
   plan        SubscriptionPlan @relation(fields: [planId], references: [id])
   payments    Payment[]
   user        User      @relation(fields: [userId], references: [id])
+  tier        SubscriptionTier
+  benefits    String[]
 }
 
 model Payment {

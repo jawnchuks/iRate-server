@@ -27,6 +27,132 @@ export class UserPhotoDto {
   createdAt!: Date;
 }
 
+export class PublicUserProfileDto {
+  @ApiProperty({
+    description: 'User ID',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  id!: string;
+
+  @ApiProperty({
+    description: "User's first name",
+    example: 'John',
+  })
+  firstName!: string | null;
+
+  @ApiProperty({
+    description: "User's last name",
+    example: 'Doe',
+  })
+  lastName!: string | null;
+
+  @ApiProperty({
+    description: "User's username",
+    example: 'johndoe',
+  })
+  username!: string | null;
+
+  @ApiProperty({
+    description: "User's bio",
+    example: 'Software engineer and photography enthusiast',
+  })
+  bio!: string | null;
+
+  @ApiProperty({
+    description: "User's gender",
+    enum: Gender,
+    example: Gender.MALE,
+  })
+  gender!: Gender | null;
+
+  @ApiProperty({
+    description: "User's age",
+    example: 33,
+  })
+  age!: number;
+
+  @ApiProperty({
+    description: "User's self-description words",
+    example: ['creative', 'ambitious', 'friendly'],
+    type: [String],
+  })
+  selfDescription!: string[];
+
+  @ApiProperty({
+    description: "User's values in others",
+    example: ['honesty', 'loyalty', 'kindness'],
+    type: [String],
+  })
+  valuesInOthers!: string[];
+
+  @ApiProperty({
+    description: "User's interests",
+    example: ['photography', 'hiking', 'coding'],
+    type: [String],
+  })
+  interests!: string[];
+
+  @ApiProperty({
+    description: "User's shared interests with the requesting user",
+    example: ['photography', 'hiking'],
+    type: [String],
+  })
+  sharedInterests!: string[];
+
+  @ApiProperty({
+    description: "User's profile photos",
+    type: [UserPhotoDto],
+  })
+  profilePhotos!: UserPhotoDto[];
+
+  @ApiProperty({
+    description: "User's profile picture",
+    type: UserPhotoDto,
+    nullable: true,
+  })
+  profilePicture!: UserPhotoDto | null;
+
+  @ApiProperty({
+    description: "User's average rating",
+    example: 4.5,
+    minimum: 0,
+    maximum: 10,
+  })
+  averageRating!: number;
+
+  @ApiProperty({
+    description: 'Total number of ratings received',
+    example: 25,
+  })
+  totalRatings!: number;
+
+  @ApiProperty({
+    description: 'Profile completion percentage',
+    example: 85,
+    minimum: 0,
+    maximum: 100,
+  })
+  profileCompletionPercentage!: number;
+
+  @ApiProperty({
+    description: 'Whether the user is verified',
+    example: true,
+  })
+  isVerified!: boolean;
+
+  @ApiProperty({
+    description: 'When the user was created',
+    example: '2024-01-01T00:00:00Z',
+  })
+  createdAt!: Date;
+
+  @ApiProperty({
+    description: 'When the user was last active',
+    example: '2024-01-01T00:00:00Z',
+  })
+  lastActive!: Date;
+}
+
 export class UserProfileDto {
   @ApiProperty({
     description: 'User ID',

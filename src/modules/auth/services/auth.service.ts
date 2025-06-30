@@ -20,11 +20,14 @@ import {
   AuthResponseDto,
   PhotoUploadResponseDto,
   OtpResendResponseDto,
+  MinimalUserDto,
 } from '../dto/auth-response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { RedisService } from '../../redis/redis.service';
 import crypto from 'crypto';
+import { ProfileService } from '../../profile/services/profile.service';
+import { UserService } from '../../users/services/user.service';
 
 @Injectable()
 export class AuthService {
@@ -36,11 +39,16 @@ export class AuthService {
     private readonly notificationService: NotificationService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly redisService: RedisService,
+    private readonly profileService: ProfileService,
+    private readonly userService: UserService,
   ) {}
 
-  async initiateAuth(
-    dto: InitiateAuthDto,
-  ): Promise<{ requestId: string; isNewUser: boolean; needsOnboarding: boolean }> {
+  async initiateAuth(dto: InitiateAuthDto): Promise<{
+    requestId: string;
+    isNewUser: boolean;
+    needsOnboarding: boolean;
+    otpSent: boolean;
+  }> {
     try {
       const { email, phoneNumber, googleToken } = dto;
 
@@ -64,6 +72,7 @@ export class AuthService {
           requestId: user.id,
           isNewUser: !user.lastVerificationAt,
           needsOnboarding: !user.onboardingComplete,
+          otpSent: false,
         };
       }
 
@@ -85,6 +94,7 @@ export class AuthService {
               requestId: email,
               isNewUser: false,
               needsOnboarding: !existingUser.onboardingComplete,
+              otpSent: false,
             };
           }
         }
@@ -102,6 +112,7 @@ export class AuthService {
             requestId: email,
             isNewUser: !existingUser,
             needsOnboarding: existingUser ? !existingUser.onboardingComplete : true,
+            otpSent: true,
           };
         } catch (error) {
           if (error instanceof Error) {
@@ -133,6 +144,7 @@ export class AuthService {
               requestId: phoneNumber,
               isNewUser: false,
               needsOnboarding: !existingUser.onboardingComplete,
+              otpSent: false,
             };
           }
         }
@@ -143,6 +155,7 @@ export class AuthService {
             requestId: phoneNumber,
             isNewUser: !existingUser,
             needsOnboarding: existingUser ? !existingUser.onboardingComplete : true,
+            otpSent: false,
           };
         } catch (error) {
           if (error instanceof Error) {
@@ -202,7 +215,32 @@ export class AuthService {
       roles: user.roles,
     });
 
-    return new AuthResponseDto(accessToken, refreshToken, user);
+    // If user is not onboarded, return minimal user response
+    if (!user.onboardingComplete) {
+      return new AuthResponseDto(
+        accessToken,
+        refreshToken,
+        new MinimalUserDto({
+          id: user.id,
+          email: user.email ?? null,
+          onboardingComplete: user.onboardingComplete ?? false,
+          roles: Array.isArray(user.roles) ? user.roles.map(String) : [],
+        } as MinimalUserDto),
+      );
+    }
+
+    // If user is onboarded, add profileCompletion to user object
+    const profileCompletion = await this.profileService.getProfileCompletion(user.id);
+    const userWithPhotos = await this.prisma.user.findUnique({
+      where: { id: user.id },
+      include: { profilePhotos: true, profilePicture: true },
+    });
+    if (!userWithPhotos) throw new UnauthorizedException('User not found');
+    const userDto = this.userService['mapUserToDto']
+      ? this.userService['mapUserToDto'](userWithPhotos)
+      : userWithPhotos;
+    userDto.profileCompletionPercentage = profileCompletion.completionPercentage;
+    return new AuthResponseDto(accessToken, refreshToken, userDto);
   }
 
   async completeOnboarding(dto: OnboardingDto): Promise<AuthResponseDto> {
@@ -244,8 +282,14 @@ export class AuthService {
         },
         include: {
           profilePhotos: true,
+          profilePicture: true,
         },
       });
+
+      // Map to UserProfileDto (with profilePictureUrl and photos)
+      const userDto = this.userService['mapUserToDto']
+        ? this.userService['mapUserToDto'](updatedUser)
+        : updatedUser;
 
       // Generate tokens
       const { accessToken, refreshToken } = await this.generateTokens({
@@ -254,7 +298,7 @@ export class AuthService {
         roles: updatedUser.roles,
       });
 
-      return new AuthResponseDto(accessToken, refreshToken, updatedUser);
+      return new AuthResponseDto(accessToken, refreshToken, userDto);
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
@@ -306,38 +350,10 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
-    // In a real application, you might want to blacklist the refresh token
+    // If you store refresh tokens in Redis or DB, remove/blacklist them here
+    // Example: await this.redisService.del(`refresh_token:${userId}`);
+    // For stateless JWT, just let the token expire on the client
     return;
-  }
-
-  async becomeCreator(userId: string): Promise<{ id: string; roles: string[] }> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('User not found');
-    }
-
-    if (user.roles.includes(UserRole.AFFILIATE)) {
-      throw new BadRequestException('Affiliates cannot become creators');
-    }
-
-    if (user.roles.includes(UserRole.CREATOR)) {
-      throw new BadRequestException('User is already a creator');
-    }
-
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        roles: [...user.roles, UserRole.CREATOR],
-      },
-    });
-
-    return {
-      id: updatedUser.id,
-      roles: updatedUser.roles,
-    };
   }
 
   private async generateTokens(user: { id: string; email: string | null; roles: UserRole[] }) {
@@ -394,5 +410,17 @@ export class AuthService {
     }
 
     return new OtpResendResponseDto(identifier, 300);
+  }
+
+  async deactivateAccount(userId: string): Promise<void> {
+    // Set isActive to false and deactivatedAt to now
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        isActive: false,
+        deactivatedAt: new Date(),
+      },
+    });
+    // Optionally, clear sessions/tokens, send notification, etc.
   }
 }

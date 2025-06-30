@@ -77,15 +77,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const { chatId, message } = data;
       const savedMessage = await this.chatService.sendMessage(chatId, userId, message);
 
-      // Get the other participant's ID
+      // Get the conversation and participants
       const conversation = await this.chatService.getRawConversation(chatId);
-      const otherParticipantId =
-        conversation.participant1Id === userId
-          ? conversation.participant2Id
-          : conversation.participant1Id;
+      if (!conversation) throw new Error('Conversation not found');
+      const otherParticipants = conversation.participants.filter((p) => p.id !== userId);
+      const recipientIds = otherParticipants.map((p) => p.id);
 
-      // Emit to both participants
-      this.server.to(`user:${userId}`).to(`user:${otherParticipantId}`).emit('message:new', {
+      // Emit to all recipients (for group or 1:1)
+      this.server.to(`user:${userId}`);
+      recipientIds.forEach((id) => {
+        this.server.to(`user:${id}`);
+      });
+      this.server.emit('message:new', {
         chatId,
         message: savedMessage,
       });
@@ -110,17 +113,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       await this.chatService.markMessagesAsRead(data.chatId, userId);
 
-      // Get the other participant's ID
+      // Get the conversation and participants
       const conversation = await this.chatService.getRawConversation(data.chatId);
-      const otherParticipantId =
-        conversation.participant1Id === userId
-          ? conversation.participant2Id
-          : conversation.participant1Id;
+      if (!conversation) throw new Error('Conversation not found');
+      const otherParticipants = conversation.participants.filter((p) => p.id !== userId);
+      const recipientIds = otherParticipants.map((p) => p.id);
 
-      // Notify the sender that messages were read
-      this.server.to(`user:${otherParticipantId}`).emit('message:read', {
-        chatId: data.chatId,
-        readBy: userId,
+      // Notify all recipients that messages were read
+      recipientIds.forEach((id) => {
+        this.server.to(`user:${id}`).emit('message:read', {
+          chatId: data.chatId,
+          readBy: userId,
+        });
       });
     } catch (error) {
       if (error instanceof Error) {
@@ -139,14 +143,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @CurrentUser('sub') userId: string,
   ) {
     const conversation = await this.chatService.getRawConversation(data.chatId);
-    const otherParticipantId =
-      conversation.participant1Id === userId
-        ? conversation.participant2Id
-        : conversation.participant1Id;
-
-    this.server.to(`user:${otherParticipantId}`).emit('typing:start', {
-      chatId: data.chatId,
-      userId,
+    if (!conversation) return;
+    const otherParticipants = conversation.participants.filter((p) => p.id !== userId);
+    const recipientIds = otherParticipants.map((p) => p.id);
+    recipientIds.forEach((id) => {
+      this.server.to(`user:${id}`).emit('typing:start', {
+        chatId: data.chatId,
+        userId,
+      });
     });
   }
 
@@ -158,14 +162,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @CurrentUser('sub') userId: string,
   ) {
     const conversation = await this.chatService.getRawConversation(data.chatId);
-    const otherParticipantId =
-      conversation.participant1Id === userId
-        ? conversation.participant2Id
-        : conversation.participant1Id;
-
-    this.server.to(`user:${otherParticipantId}`).emit('typing:stop', {
-      chatId: data.chatId,
-      userId,
+    if (!conversation) return;
+    const otherParticipants = conversation.participants.filter((p) => p.id !== userId);
+    const recipientIds = otherParticipants.map((p) => p.id);
+    recipientIds.forEach((id) => {
+      this.server.to(`user:${id}`).emit('typing:stop', {
+        chatId: data.chatId,
+        userId,
+      });
     });
   }
 }
