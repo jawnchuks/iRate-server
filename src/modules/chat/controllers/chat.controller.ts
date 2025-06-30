@@ -8,6 +8,8 @@ import {
   Query,
   UseGuards,
   HttpStatus,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { ChatService } from '../services/chat.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -25,13 +27,18 @@ import { CreateMessageDto, CreateChatRequestDto, PaginationDto } from '../dto/ch
 import { Message } from '../entities/message.entity';
 import { Chat } from '../entities/chat.entity';
 import { ChatRequest } from '../entities/chat-request.entity';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { CloudinaryService } from '../../../common/utils/cloudinary';
 
 @ApiTags('chat')
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   @Post()
   @ApiOperation({ summary: 'Create a new chat' })
@@ -166,6 +173,43 @@ export class ChatController {
   ): Promise<BaseResponseDto<void>> {
     await this.chatService.deleteMessage(id, messageId, userId);
     return new BaseResponseDto<void>(HttpStatus.OK, 'Message deleted successfully', undefined);
+  }
+
+  @Post('media')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiOperation({ summary: 'Upload media (image, video, etc.) for chat messages' })
+  @ApiResponse({
+    status: 201,
+    description: 'Media uploaded successfully',
+    schema: {
+      properties: {
+        url: { type: 'string', example: 'https://res.cloudinary.com/.../media.jpg' },
+        publicId: { type: 'string', example: 'iRate/users/123/media/abc123' },
+        viewOnce: { type: 'boolean', example: false },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Invalid file or upload failed',
+    type: ValidationErrorDto,
+  })
+  async uploadMedia(
+    @CurrentUser('sub') userId: string,
+    @Body('viewOnce') viewOnce: boolean,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    try {
+      const uploadResult = await this.cloudinaryService.uploadFile(file);
+      return {
+        url: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
+        viewOnce: !!viewOnce,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Upload failed';
+      return { error: message };
+    }
   }
 }
 

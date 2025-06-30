@@ -2,7 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
 import { UserFilterDto } from '../dto/user-filter.dto';
-import { UserProfileDto, PaginatedResponseDto } from '../dto/user-response.dto';
+import {
+  UserProfileDto,
+  PaginatedResponseDto,
+  PublicUserProfileDto,
+} from '../dto/user-response.dto';
 import { Prisma, User, UserRole } from '@prisma/client';
 import { UpdatePreferencesDto } from '../dto/user-preferences.dto';
 import { UpdatePrivacyDto } from '../dto/user-privacy.dto';
@@ -345,32 +349,26 @@ export class UserService {
   async getSuggestedUsers(
     userId: string,
     filter: UserFilterDto,
-  ): Promise<PaginatedResponseDto<UserProfileDto>> {
+  ): Promise<PaginatedResponseDto<PublicUserProfileDto>> {
     const { page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
 
-    // Get user's preferences and interests
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        interests: true,
-        gender: true,
-        preferences: true,
-      },
+    // Get users that the current user has rated
+    const ratedByMe = await this.prisma.rating.findMany({
+      where: { raterId: userId },
+      select: { targetId: true },
     });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    const ratedByMeIds = ratedByMe.map((rating) => rating.targetId);
 
     let query: Prisma.UserFindManyArgs = {
       where: {
         isActive: true,
         deletedAt: null,
-        id: { not: userId },
-        interests: {
-          hasSome: user.interests,
-        },
+        id: { not: userId }, // Exclude current user
+        totalRatings: { gt: 0 }, // Has been rated by others
+        ...(ratedByMeIds.length > 0 && {
+          id: { notIn: ratedByMeIds }, // Exclude users I've already rated
+        }),
       },
       skip,
       take: limit,
@@ -388,7 +386,7 @@ export class UserService {
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToPublicDto(user as UserWithPhotos));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
@@ -473,6 +471,42 @@ export class UserService {
       deletedAt: user.deletedAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      lastActive: user.updatedAt,
+    };
+  }
+
+  private mapUserToPublicDto(user: UserWithPhotos): PublicUserProfileDto {
+    return {
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      username: user.username,
+      bio: user.bio,
+      gender: user.gender,
+      age: user.dob ? this.calculateAge(user.dob) : 0,
+      selfDescription: (user.selfDescription as string[]) || [],
+      valuesInOthers: (user.valuesInOthers as string[]) || [],
+      interests: (user.interests as string[]) || [],
+      sharedInterests: [], // To be populated based on requesting user
+      profilePhotos: user.profilePhotos.map((photo) => ({
+        id: photo.id,
+        url: photo.url,
+        isProfilePicture: photo.isProfilePicture,
+        createdAt: photo.createdAt,
+      })),
+      profilePicture: user.profilePicture
+        ? {
+            id: user.profilePicture.id,
+            url: user.profilePicture.url,
+            isProfilePicture: user.profilePicture.isProfilePicture,
+            createdAt: user.profilePicture.createdAt,
+          }
+        : null,
+      averageRating: user.averageRating || 0,
+      totalRatings: user.totalRatings || 0,
+      profileCompletionPercentage: user.profileCompletionPercentage || 0,
+      isVerified: user.isVerified || false,
+      createdAt: user.createdAt,
       lastActive: user.updatedAt,
     };
   }

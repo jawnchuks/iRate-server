@@ -11,6 +11,7 @@ import { CloudinaryService } from 'src/common/utils/cloudinary';
 import { UserModule } from '../users/user.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { RedisModule } from '../redis/redis.module';
+import { ProfileModule } from '../profile/profile.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { RedisModule } from '../redis/redis.module';
     UserModule,
     NotificationsModule,
     RedisModule,
+    ProfileModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

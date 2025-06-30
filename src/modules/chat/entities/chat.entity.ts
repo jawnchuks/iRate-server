@@ -24,4 +24,22 @@ export class Chat {
 
   @ApiProperty()
   isLocked!: boolean;
+
+  @ApiProperty()
+  groupName!: string;
+
+  @ApiProperty()
+  participants!: string[];
+
+  @ApiProperty()
+  media!: string[];
+
+  @ApiProperty()
+  reactions!: string[];
+
+  @ApiProperty()
+  events!: string[];
+
+  @ApiProperty()
+  calls!: string[];
 }

@@ -9,12 +9,16 @@ import {
   HttpStatus,
   Patch,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags, ApiExtraModels } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { UserService } from '../services/user.service';
 import { UserFilterDto } from '../dto/user-filter.dto';
-import { UserProfileDto, PaginatedResponseDto } from '../dto/user-response.dto';
+import {
+  UserProfileDto,
+  PaginatedResponseDto,
+  PublicUserProfileDto,
+} from '../dto/user-response.dto';
 import { BaseResponseDto } from '../../../common/dto/base-response.dto';
 import { UpdatePreferencesDto } from '../dto/user-preferences.dto';
 import { UpdatePrivacyDto } from '../dto/user-privacy.dto';
@@ -29,6 +33,7 @@ import {
 @Controller('users')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
+@ApiExtraModels(UserProfileDto)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -133,8 +138,8 @@ export class UserController {
   }
 
   @Get('suggested')
-  @ApiOperation({ summary: 'Get suggested users based on interests' })
-  @ApiResponse({ status: 200, description: 'Returns suggested users', type: BaseResponseDto })
+  @ApiOperation({ summary: "Get users I haven't rated but others have rated" })
+  @ApiResponse({ status: 200, description: 'Returns users to rate', type: BaseResponseDto })
   @ApiResponse({ status: 401, description: 'Unauthorized', type: BaseUnauthorizedErrorDto })
   @ApiResponse({ status: 404, description: 'User not found', type: BaseNotFoundErrorDto })
   @ApiResponse({
@@ -145,9 +150,9 @@ export class UserController {
   async getSuggestedUsers(
     @CurrentUser('sub') userId: string,
     @Query() filter: UserFilterDto,
-  ): Promise<BaseResponseDto<PaginatedResponseDto<UserProfileDto>>> {
+  ): Promise<BaseResponseDto<PaginatedResponseDto<PublicUserProfileDto>>> {
     const users = await this.userService.getSuggestedUsers(userId, filter);
-    return new BaseResponseDto(HttpStatus.OK, 'Suggested users retrieved successfully', users);
+    return new BaseResponseDto(HttpStatus.OK, 'Users to rate retrieved successfully', users);
   }
 
   @Get(':id')

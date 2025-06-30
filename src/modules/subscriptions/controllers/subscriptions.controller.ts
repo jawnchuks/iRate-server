@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiExtraModels } from '@nestjs/swagger';
 import { SubscriptionsService } from '../services/subscriptions.service';
 import {
   CreateSubscriptionDto,
@@ -21,6 +21,7 @@ interface RequestWithUser extends Request {
 @Controller('subscriptions')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
+@ApiExtraModels(SubscriptionResponseDto, SubscriptionPlanDto, PaymentHistoryDto)
 export class SubscriptionsController {
   constructor(private readonly subscriptionsService: SubscriptionsService) {}
 

@@ -7,6 +7,7 @@ import { UserModule } from '../users/user.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ChatGateway } from './gateways/chat.gateway';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { CloudinaryService } from '../../common/utils/cloudinary';
 
 @Module({
   imports: [
@@ -20,7 +21,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
     forwardRef(() => SubscriptionsModule),
   ],
   controllers: [ChatController, ChatRequestController],
-  providers: [ChatService, ChatGateway],
+  providers: [ChatService, ChatGateway, CloudinaryService],
   exports: [ChatService],
 })
 export class ChatModule {}

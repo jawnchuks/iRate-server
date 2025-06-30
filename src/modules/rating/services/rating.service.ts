@@ -18,6 +18,12 @@ export class RatingService {
   ) {}
 
   async createRating(raterId: string, dto: CreateRatingDto): Promise<RatingResponseDto> {
+    // Check if rater is verified
+    const rater = await this.prisma.user.findUnique({ where: { id: raterId } });
+    if (!rater || !rater.isVerified) {
+      throw new BadRequestException('You must be verified to rate a user');
+    }
+
     // Check if user has already rated
     const existingRating = await this.prisma.rating.findFirst({
       where: {
@@ -25,7 +31,6 @@ export class RatingService {
         targetId: dto.targetId,
       },
     });
-
     if (existingRating) {
       throw new BadRequestException('You have already rated this user');
     }
@@ -34,7 +39,6 @@ export class RatingService {
     const ratee = await this.prisma.user.findUnique({
       where: { id: dto.targetId },
     });
-
     if (!ratee) {
       throw new NotFoundException('User to rate not found');
     }
@@ -50,18 +54,16 @@ export class RatingService {
         },
       },
     });
-
     if (dailyRatings >= this.MAX_DAILY_RATINGS) {
       throw new BadRequestException('Daily rating limit reached');
     }
 
-    // Create the rating
+    // Create the rating (no review)
     const rating = await this.prisma.rating.create({
       data: {
         raterId,
         targetId: dto.targetId,
         score: dto.score,
-        review: dto.review,
       },
     });
 
@@ -185,11 +187,9 @@ export class RatingService {
         targetId: userId,
       },
     });
-
     const totalRatings = ratings.length;
     const averageRating =
       totalRatings > 0 ? ratings.reduce((sum, r) => sum + r.score, 0) / totalRatings : 0;
-
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -242,7 +242,6 @@ export class RatingService {
       raterId: rating.raterId,
       rateeId: rating.targetId,
       score: rating.score,
-      feedback: rating.review || undefined,
       createdAt: rating.createdAt,
       updatedAt: rating.updatedAt,
     };

@@ -37,8 +37,8 @@ export class RatingController {
   @Post()
   @Roles(UserRole.USER)
   @ApiOperation({
-    summary: 'Create a new rating',
-    description: 'Create a new rating for a user',
+    summary: 'Rate a user',
+    description: 'Rate a user (one-time, cannot be undone, only if verified)',
   })
   @CommonApiResponse(RatingResponseDto)
   @SwaggerApiResponse({
@@ -66,18 +66,15 @@ export class RatingController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async createRating(
-    @CurrentUser() user: { sub: string },
-    @Body() createRatingDto: CreateRatingDto,
-  ) {
+  async rateUser(@CurrentUser() user: { sub: string }, @Body() createRatingDto: CreateRatingDto) {
     try {
       const rating = await this.ratingService.createRating(user.sub, createRatingDto);
-      return new BaseResponseDto(HttpStatus.CREATED, 'Rating created successfully', rating);
+      return new BaseResponseDto(HttpStatus.CREATED, 'User rated successfully', rating);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      throw new HttpException('Failed to create rating', HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new HttpException('Failed to rate user', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

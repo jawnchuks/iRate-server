@@ -19,4 +19,10 @@ export class ChatRequest {
 
   @ApiProperty()
   updatedAt!: Date;
+
+  @ApiProperty({ description: 'Optional initial message with request' })
+  message?: string;
+
+  @ApiProperty({ description: 'Group support (if needed)' })
+  groupId?: string;
 }

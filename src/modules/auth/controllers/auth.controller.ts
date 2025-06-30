@@ -12,16 +12,20 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from '../services/auth.service';
 import { UserService } from '../../users/services/user.service';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { RolesGuard } from '../guards/roles.guard';
-import { Roles, UserRole } from '../decorators/roles.decorator';
 import { OnboardingDto, InitiateAuthDto } from '../dto/auth.dto';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiConsumes,
+  ApiResponse,
+  ApiExtraModels,
+} from '@nestjs/swagger';
 import {
   BaseResponseDto,
   BaseValidationErrorDto as ValidationErrorDto,
   BaseUnauthorizedErrorDto as UnauthorizedErrorDto,
-  BaseForbiddenErrorDto as ForbiddenErrorDto,
   BaseInternalServerErrorDto as InternalServerErrorDto,
   BaseErrorResponseDto as TooManyRequestsErrorDto,
 } from '../../../common/dto';
@@ -29,9 +33,12 @@ import { UserProfileDto } from '../../users/dto/user-response.dto';
 import { AuthResponseDto } from '../dto/auth-response.dto';
 import { PhotoUploadResponseDto, OtpResendResponseDto } from '../dto/auth-response.dto';
 import { OtpVerificationDto, OtpResendDto } from '../dto/auth.dto';
+import { MinimalUserDto } from '../dto/auth-response.dto';
 
 @ApiTags('auth')
 @Controller('auth')
+@ApiExtraModels(MinimalUserDto, UserProfileDto)
+@ApiBearerAuth()
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
@@ -79,7 +86,11 @@ export class AuthController {
     @Body() dto: InitiateAuthDto,
   ): Promise<BaseResponseDto<{ requestId: string }>> {
     const data = await this.authService.initiateAuth(dto);
-    return new BaseResponseDto(HttpStatus.OK, 'OTP sent successfully', {
+    const message =
+      data.otpSent === false
+        ? 'User already verified and session is active. No OTP sent.'
+        : 'OTP sent successfully';
+    return new BaseResponseDto(HttpStatus.OK, message, {
       requestId: data.requestId,
     });
   }
@@ -205,54 +216,6 @@ export class AuthController {
     return new BaseResponseDto(HttpStatus.OK, 'Logged out successfully', null);
   }
 
-  @Post('become-creator')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.USER)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Become a creator',
-    description: 'Upgrade user account to creator status. Only available to regular users.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Successfully upgraded to creator',
-    type: BaseResponseDto,
-    schema: {
-      properties: {
-        statusCode: { type: 'number', example: 200 },
-        message: { type: 'string', example: 'Successfully upgraded to creator' },
-        data: {
-          type: 'object',
-          properties: {
-            id: { type: 'string', example: '123e4567-e89b-12d3-a456-426614174000' },
-            roles: { type: 'array', items: { type: 'string' }, example: ['USER', 'CREATOR'] },
-          },
-        },
-      },
-    },
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @ApiResponse({
-    status: 403,
-    description: 'User already has creator role or is an affiliate',
-    type: ForbiddenErrorDto,
-  })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async becomeCreator(
-    @CurrentUser() user: { sub: string },
-  ): Promise<BaseResponseDto<{ id: string; roles: string[] }>> {
-    const data = await this.authService.becomeCreator(user.sub);
-    return new BaseResponseDto(HttpStatus.OK, 'Successfully upgraded to creator', data);
-  }
-
   @Get('profile')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
@@ -282,8 +245,10 @@ export class AuthController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async getProfile(@CurrentUser() user: { sub: string }): Promise<BaseResponseDto<UserProfileDto>> {
-    const profile = await this.userService.findById(user.sub);
+  async getProfile(
+    @CurrentUser('userId') userId: string,
+  ): Promise<BaseResponseDto<UserProfileDto>> {
+    const profile = await this.userService.findById(userId);
     return new BaseResponseDto(HttpStatus.OK, 'Profile retrieved successfully', profile);
   }
 }

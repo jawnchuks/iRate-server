@@ -1,5 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { MessageType } from '@prisma/client';
+import { Attachment } from './attachment.entity';
+import { Reaction } from './reaction.entity';
+import { MessageEvent } from './message-event.entity';
 
 export class Message {
   @ApiProperty({ description: 'Unique identifier for the message' })
@@ -37,4 +40,22 @@ export class Message {
 
   @ApiProperty({ required: false, nullable: true })
   editedAt!: Date | null;
+
+  @ApiProperty({ description: 'URL of the media message' })
+  mediaUrl: string = '';
+
+  @ApiProperty({ description: 'Array of attachment objects' })
+  attachments: Attachment[] = [];
+
+  @ApiProperty({ description: 'Array of reaction objects' })
+  reactions: Reaction[] = [];
+
+  @ApiProperty({ description: 'Array of message event objects' })
+  events: MessageEvent[] = [];
+
+  @ApiProperty({ description: 'Whether the message is view-once' })
+  viewOnce: boolean = false;
+
+  @ApiProperty({ description: 'When the message expires' })
+  expiresAt: Date = new Date();
 }

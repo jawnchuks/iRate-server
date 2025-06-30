@@ -62,35 +62,180 @@ export interface SMSSubscriptionData {
   amount: string;
 }
 
+// Common email styles and components
+const emailStyles = {
+  container: `
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    line-height: 1.6;
+    color: #333333;
+    max-width: 600px;
+    margin: 0 auto;
+    background-color: #ffffff;
+  `,
+  header: `
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 40px 30px;
+    text-align: center;
+    border-radius: 8px 8px 0 0;
+  `,
+  logo: `
+    color: #ffffff;
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    text-decoration: none;
+    letter-spacing: -1px;
+  `,
+  body: `
+    padding: 40px 30px;
+    background-color: #ffffff;
+  `,
+  greeting: `
+    font-size: 20px;
+    font-weight: 600;
+    color: #333333;
+    margin: 0 0 20px 0;
+  `,
+  text: `
+    font-size: 16px;
+    color: #555555;
+    margin: 16px 0;
+    line-height: 1.6;
+  `,
+  button: `
+    display: inline-block;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    padding: 16px 32px;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 16px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+  `,
+  codeBox: `
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+    border: 2px solid #667eea;
+    padding: 24px;
+    text-align: center;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 8px;
+    margin: 30px 0;
+    border-radius: 12px;
+    color: #667eea;
+    font-family: 'Courier New', monospace;
+  `,
+  infoBox: `
+    background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+    border-left: 4px solid #667eea;
+    padding: 24px;
+    margin: 24px 0;
+    border-radius: 0 8px 8px 0;
+  `,
+  footer: `
+    background-color: #f8f9fa;
+    padding: 30px;
+    text-align: center;
+    border-radius: 0 0 8px 8px;
+    border-top: 1px solid #e9ecef;
+  `,
+  footerText: `
+    font-size: 14px;
+    color: #6c757d;
+    margin: 8px 0;
+  `,
+  divider: `
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+    margin: 30px 0;
+    border: none;
+  `,
+  starRating: `
+    color: #ffc107;
+    font-size: 20px;
+    margin: 8px 0;
+  `,
+};
+
+const createEmailWrapper = (content: string) => `
+  <div style="${emailStyles.container}">
+    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      ${content}
+    </div>
+  </div>
+`;
+
+const createHeader = (title: string) => `
+  <div style="${emailStyles.header}">
+    <h1 style="${emailStyles.logo}">iRate</h1>
+    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 16px;">${title}</p>
+  </div>
+`;
+
+const createFooter = () => `
+  <div style="${emailStyles.footer}">
+    <p style="${emailStyles.footerText}">
+      <strong>iRate Team</strong><br>
+      Making content discovery better, one rating at a time
+    </p>
+    <hr style="${emailStyles.divider}">
+    <p style="${emailStyles.footerText}">
+      This email was sent to you because you have an account with iRate.<br>
+      If you have any questions, please contact our support team.
+    </p>
+    <p style="${emailStyles.footerText}">
+      © 2025 iRate. All rights reserved.
+    </p>
+  </div>
+`;
+
 // Email Templates
 export const emailTemplates = {
   verification: {
-    subject: 'Verify Your Email',
-    html: (data: VerificationData) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Welcome to iRate!</h2>
-        <p>Hi ${data.name},</p>
-        <p>Thank you for signing up. Please use the following code to verify your email address:</p>
-        <div style="background-color: #f4f4f4; padding: 20px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0;">
+    subject: '🔐 Verify Your iRate Account',
+    html: (data: VerificationData) =>
+      createEmailWrapper(`
+      ${createHeader('Email Verification')}
+      <div style="${emailStyles.body}">
+        <p style="${emailStyles.greeting}">Hi ${data.name}! 👋</p>
+        <p style="${emailStyles.text}">
+          Welcome to <strong>iRate</strong>! We're thrilled to have you join our community of content enthusiasts.
+        </p>
+        <p style="${emailStyles.text}">
+          To get started, please verify your email address using the code below:
+        </p>
+        <div style="${emailStyles.codeBox}">
           ${data.otp}
         </div>
-        <p>This code will expire in 10 minutes.</p>
-        <p>If you didn't request this verification, please ignore this email.</p>
-        <p>Best regards,<br>The iRate Team</p>
+        <div style="${emailStyles.infoBox}">
+          <p style="margin: 0; font-size: 14px; color: #667eea;">
+            <strong>⏰ Important:</strong> This verification code expires in 10 minutes for your security.
+          </p>
+        </div>
+        <p style="${emailStyles.text}">
+          Once verified, you'll be able to rate content, connect with other users, and discover amazing new things!
+        </p>
+        <p style="${emailStyles.text}; color: #888888; font-size: 14px;">
+          If you didn't create this account, please ignore this email.
+        </p>
       </div>
-    `,
+      ${createFooter()}
+    `),
     text: (data: VerificationData) => `
-      Welcome to iRate!
+      🔐 VERIFY YOUR IRATE ACCOUNT
 
-      Hi ${data.name},
+      Hi ${data.name}!
 
-      Thank you for signing up. Please use the following code to verify your email address:
+      Welcome to iRate! We're thrilled to have you join our community.
 
-      ${data.otp}
+      Please use this verification code: ${data.otp}
 
-      This code will expire in 10 minutes.
+      This code expires in 10 minutes.
 
-      If you didn't request this verification, please ignore this email.
+      If you didn't create this account, please ignore this email.
 
       Best regards,
       The iRate Team
@@ -98,35 +243,50 @@ export const emailTemplates = {
   } as NotificationTemplate<VerificationData>,
 
   welcome: {
-    subject: 'Welcome to iRate!',
-    html: (data: WelcomeData) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Welcome to iRate!</h2>
-        <p>Hi ${data.name},</p>
-        <p>Thank you for joining iRate! We're excited to have you on board.</p>
-        <p>With iRate, you can:</p>
-        <ul>
-          <li>Rate and review your favorite content</li>
-          <li>Connect with other users</li>
-          <li>Discover new content based on your preferences</li>
-        </ul>
-        <p>If you have any questions, feel free to reach out to our support team.</p>
-        <p>Best regards,<br>The iRate Team</p>
+    subject: "🎉 Welcome to iRate - Let's Get Started!",
+    html: (data: WelcomeData) =>
+      createEmailWrapper(`
+      ${createHeader('Welcome to iRate!')}
+      <div style="${emailStyles.body}">
+        <p style="${emailStyles.greeting}">Welcome aboard, ${data.name}! 🚀</p>
+        <p style="${emailStyles.text}">
+          Congratulations! Your account is now verified and ready to use. We're excited to have you as part of the iRate community.
+        </p>
+        <div style="${emailStyles.infoBox}">
+          <h3 style="margin: 0 0 16px 0; color: #667eea;">🌟 What you can do with iRate:</h3>
+          <div style="margin-left: 16px;">
+            <p style="margin: 8px 0;"><strong style="color: #667eea;">⭐</strong> Rate and review your favorite movies, books, restaurants, and more</p>
+            <p style="margin: 8px 0;"><strong style="color: #667eea;">🤝</strong> Connect with like-minded users and build your network</p>
+            <p style="margin: 8px 0;"><strong style="color: #667eea;">🎯</strong> Discover personalized content recommendations</p>
+            <p style="margin: 8px 0;"><strong style="color: #667eea;">💬</strong> Join discussions and share your opinions</p>
+          </div>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="#" style="${emailStyles.button}">
+            🚀 Start Exploring iRate
+          </a>
+        </div>
+        <p style="${emailStyles.text}">
+          Need help getting started? Our support team is here to assist you every step of the way.
+        </p>
       </div>
-    `,
+      ${createFooter()}
+    `),
     text: (data: WelcomeData) => `
-      Welcome to iRate!
+      🎉 WELCOME TO IRATE!
 
-      Hi ${data.name},
+      Welcome aboard, ${data.name}!
 
-      Thank you for joining iRate! We're excited to have you on board.
+      Your account is verified and ready to use. Here's what you can do:
 
-      With iRate, you can:
-      - Rate and review your favorite content
-      - Connect with other users
-      - Discover new content based on your preferences
+      ⭐ Rate and review your favorite content
+      🤝 Connect with other users  
+      🎯 Discover personalized recommendations
+      💬 Join discussions and share opinions
 
-      If you have any questions, feel free to reach out to our support team.
+      Start exploring iRate today!
+
+      Need help? Our support team is here for you.
 
       Best regards,
       The iRate Team
@@ -134,34 +294,46 @@ export const emailTemplates = {
   } as NotificationTemplate<WelcomeData>,
 
   passwordReset: {
-    subject: 'Reset Your Password',
-    html: (data: PasswordResetData) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Password Reset Request</h2>
-        <p>Hi ${data.name},</p>
-        <p>We received a request to reset your password. Click the link below to reset it:</p>
-        <div style="text-align: center; margin: 20px 0;">
-          <a href="${data.resetLink}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-            Reset Password
+    subject: '🔑 Reset Your iRate Password',
+    html: (data: PasswordResetData) =>
+      createEmailWrapper(`
+      ${createHeader('Password Reset Request')}
+      <div style="${emailStyles.body}">
+        <p style="${emailStyles.greeting}">Hi ${data.name},</p>
+        <p style="${emailStyles.text}">
+          We received a request to reset your password for your iRate account. No worries – it happens to the best of us! 
+        </p>
+        <p style="${emailStyles.text}">
+          Click the button below to securely reset your password:
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.resetLink}" style="${emailStyles.button}">
+            🔑 Reset My Password
           </a>
         </div>
-        <p>This link will expire in 1 hour.</p>
-        <p>If you didn't request this reset, please ignore this email.</p>
-        <p>Best regards,<br>The iRate Team</p>
+        <div style="${emailStyles.infoBox}">
+          <p style="margin: 0; font-size: 14px; color: #667eea;">
+            <strong>🛡️ Security Note:</strong> This link will expire in 1 hour for your protection.
+          </p>
+        </div>
+        <p style="${emailStyles.text}; color: #888888; font-size: 14px;">
+          If you didn't request this password reset, please ignore this email. Your account remains secure.
+        </p>
       </div>
-    `,
+      ${createFooter()}
+    `),
     text: (data: PasswordResetData) => `
-      Password Reset Request
+      🔑 RESET YOUR IRATE PASSWORD
 
       Hi ${data.name},
 
-      We received a request to reset your password. Click the link below to reset it:
+      We received a request to reset your password.
 
-      ${data.resetLink}
+      Reset your password here: ${data.resetLink}
 
-      This link will expire in 1 hour.
+      This link expires in 1 hour for security.
 
-      If you didn't request this reset, please ignore this email.
+      If you didn't request this, please ignore this email.
 
       Best regards,
       The iRate Team
@@ -169,33 +341,56 @@ export const emailTemplates = {
   } as NotificationTemplate<PasswordResetData>,
 
   subscriptionConfirmation: {
-    subject: 'Subscription Confirmation',
-    html: (data: SubscriptionConfirmationData) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Subscription Confirmed!</h2>
-        <p>Hi ${data.name},</p>
-        <p>Thank you for subscribing to our ${data.planName} plan.</p>
-        <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0;">
-          <p><strong>Plan:</strong> ${data.planName}</p>
-          <p><strong>Amount:</strong> ${data.amount}</p>
-          <p><strong>Next Billing Date:</strong> ${data.nextBillingDate}</p>
+    subject: '✅ Subscription Confirmed - Welcome to Premium!',
+    html: (data: SubscriptionConfirmationData) =>
+      createEmailWrapper(`
+      ${createHeader('Subscription Confirmed!')}
+      <div style="${emailStyles.body}">
+        <p style="${emailStyles.greeting}">Congratulations, ${data.name}! 🎉</p>
+        <p style="${emailStyles.text}">
+          Thank you for upgrading to our <strong>${data.planName}</strong> plan. You now have access to all premium features!
+        </p>
+        <div style="${emailStyles.infoBox}">
+          <h3 style="margin: 0 0 16px 0; color: #667eea;">📋 Subscription Details:</h3>
+          <table style="width: 100%; font-size: 16px;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #333;">Plan:</td>
+              <td style="padding: 8px 0;">${data.planName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #333;">Amount:</td>
+              <td style="padding: 8px 0; font-weight: 700; color: #667eea;">${data.amount}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #333;">Next Billing:</td>
+              <td style="padding: 8px 0;">${data.nextBillingDate}</td>
+            </tr>
+          </table>
         </div>
-        <p>You can manage your subscription in your account settings.</p>
-        <p>Best regards,<br>The iRate Team</p>
+        <p style="${emailStyles.text}">
+          You can manage your subscription, update payment methods, or change plans anytime in your account settings.
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="#" style="${emailStyles.button}">
+            🎯 Explore Premium Features
+          </a>
+        </div>
       </div>
-    `,
+      ${createFooter()}
+    `),
     text: (data: SubscriptionConfirmationData) => `
-      Subscription Confirmed!
+      ✅ SUBSCRIPTION CONFIRMED!
 
-      Hi ${data.name},
+      Congratulations, ${data.name}!
 
-      Thank you for subscribing to our ${data.planName} plan.
+      Thank you for upgrading to ${data.planName}.
 
+      SUBSCRIPTION DETAILS:
       Plan: ${data.planName}
       Amount: ${data.amount}
-      Next Billing Date: ${data.nextBillingDate}
+      Next Billing: ${data.nextBillingDate}
 
-      You can manage your subscription in your account settings.
+      Manage your subscription in account settings.
 
       Best regards,
       The iRate Team
@@ -203,33 +398,56 @@ export const emailTemplates = {
   } as NotificationTemplate<SubscriptionConfirmationData>,
 
   paymentConfirmation: {
-    subject: 'Payment Confirmation',
-    html: (data: PaymentConfirmationData) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Payment Confirmed</h2>
-        <p>Hi ${data.name},</p>
-        <p>Your payment has been processed successfully.</p>
-        <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0;">
-          <p><strong>Amount:</strong> ${data.amount}</p>
-          <p><strong>Date:</strong> ${data.date}</p>
-          <p><strong>Transaction ID:</strong> ${data.transactionId}</p>
+    subject: '💳 Payment Confirmed - Thank You!',
+    html: (data: PaymentConfirmationData) =>
+      createEmailWrapper(`
+      ${createHeader('Payment Confirmed')}
+      <div style="${emailStyles.body}">
+        <p style="${emailStyles.greeting}">Hi ${data.name},</p>
+        <p style="${emailStyles.text}">
+          Great news! Your payment has been processed successfully. Thank you for your continued support! 💙
+        </p>
+        <div style="${emailStyles.infoBox}">
+          <h3 style="margin: 0 0 16px 0; color: #667eea;">🧾 Payment Details:</h3>
+          <table style="width: 100%; font-size: 16px;">
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #333;">Amount:</td>
+              <td style="padding: 8px 0; font-weight: 700; color: #667eea;">${data.amount}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #333;">Date:</td>
+              <td style="padding: 8px 0;">${data.date}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-weight: 600; color: #333;">Transaction ID:</td>
+              <td style="padding: 8px 0; font-family: 'Courier New', monospace; font-size: 14px;">${data.transactionId}</td>
+            </tr>
+          </table>
         </div>
-        <p>Thank you for your business!</p>
-        <p>Best regards,<br>The iRate Team</p>
+        <p style="${emailStyles.text}">
+          Keep this email as your receipt. If you have any questions about this payment, please don't hesitate to contact us.
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="#" style="${emailStyles.button}">
+            📊 View Account Dashboard
+          </a>
+        </div>
       </div>
-    `,
+      ${createFooter()}
+    `),
     text: (data: PaymentConfirmationData) => `
-      Payment Confirmed
+      💳 PAYMENT CONFIRMED
 
       Hi ${data.name},
 
-      Your payment has been processed successfully.
+      Your payment has been processed successfully!
 
+      PAYMENT DETAILS:
       Amount: ${data.amount}
       Date: ${data.date}
       Transaction ID: ${data.transactionId}
 
-      Thank you for your business!
+      Keep this as your receipt.
 
       Best regards,
       The iRate Team
@@ -237,31 +455,55 @@ export const emailTemplates = {
   } as NotificationTemplate<PaymentConfirmationData>,
 
   ratingNotification: {
-    subject: 'New Rating Received',
-    html: (data: RatingNotificationData) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>New Rating Received</h2>
-        <p>Hi ${data.name},</p>
-        <p>You've received a new rating for "${data.contentTitle}".</p>
-        <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0;">
-          <p><strong>Rating:</strong> ${data.rating}/5</p>
-          ${data.comment ? `<p><strong>Comment:</strong> ${data.comment}</p>` : ''}
+    subject: '⭐ New Rating Received!',
+    html: (data: RatingNotificationData) =>
+      createEmailWrapper(`
+      ${createHeader('New Rating Received')}
+      <div style="${emailStyles.body}">
+        <p style="${emailStyles.greeting}">Hi ${data.name}!</p>
+        <p style="${emailStyles.text}">
+          Exciting news! You've received a new rating for your content. 🎉
+        </p>
+        <div style="${emailStyles.infoBox}">
+          <h3 style="margin: 0 0 16px 0; color: #667eea;">📝 Rating Details:</h3>
+          <p style="margin: 8px 0; font-size: 18px; font-weight: 600; color: #333;">
+            "${data.contentTitle}"
+          </p>
+          <div style="${emailStyles.starRating}">
+            ${'⭐'.repeat(data.rating)}${'☆'.repeat(5 - data.rating)} (${data.rating}/5)
+          </div>
+          ${
+            data.comment
+              ? `
+            <div style="background-color: #ffffff; border: 1px solid #e9ecef; padding: 16px; border-radius: 8px; margin-top: 16px;">
+              <p style="margin: 0; font-style: italic; color: #555;">"${data.comment}"</p>
+            </div>
+          `
+              : ''
+          }
         </div>
-        <p>Thank you for your contribution to our community!</p>
-        <p>Best regards,<br>The iRate Team</p>
+        <p style="${emailStyles.text}">
+          Thank you for contributing valuable content to our community! Your ratings help others discover great content.
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="#" style="${emailStyles.button}">
+            👀 View Full Rating
+          </a>
+        </div>
       </div>
-    `,
+      ${createFooter()}
+    `),
     text: (data: RatingNotificationData) => `
-      New Rating Received
+      ⭐ NEW RATING RECEIVED!
 
-      Hi ${data.name},
+      Hi ${data.name}!
 
       You've received a new rating for "${data.contentTitle}".
 
-      Rating: ${data.rating}/5
-      ${data.comment ? `Comment: ${data.comment}` : ''}
+      Rating: ${data.rating}/5 stars
+      ${data.comment ? `Comment: "${data.comment}"` : ''}
 
-      Thank you for your contribution to our community!
+      Thank you for contributing to our community!
 
       Best regards,
       The iRate Team
@@ -269,29 +511,48 @@ export const emailTemplates = {
   } as NotificationTemplate<RatingNotificationData>,
 
   chatRequest: {
-    subject: 'New Chat Request',
-    html: (data: ChatRequestData) => `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>New Chat Request</h2>
-        <p>Hi ${data.name},</p>
-        <p>You have a new chat request from ${data.requesterName}.</p>
-        <div style="background-color: #f4f4f4; padding: 20px; margin: 20px 0;">
-          <p><strong>Message:</strong> ${data.message}</p>
+    subject: '💬 New Chat Request from ${data.requesterName}',
+    html: (data: ChatRequestData) =>
+      createEmailWrapper(`
+      ${createHeader('New Chat Request')}
+      <div style="${emailStyles.body}">
+        <p style="${emailStyles.greeting}">Hi ${data.name}!</p>
+        <p style="${emailStyles.text}">
+          You have a new chat request from <strong>${data.requesterName}</strong>. They'd like to connect with you! 🤝
+        </p>
+        <div style="${emailStyles.infoBox}">
+          <h3 style="margin: 0 0 16px 0; color: #667eea;">💌 Their Message:</h3>
+          <div style="background-color: #ffffff; border: 1px solid #e9ecef; padding: 20px; border-radius: 8px; font-style: italic;">
+            "${data.message}"
+          </div>
+          <p style="margin: 16px 0 0 0; font-size: 14px; color: #666;">
+            — <strong>${data.requesterName}</strong>
+          </p>
         </div>
-        <p>Log in to your account to respond to this request.</p>
-        <p>Best regards,<br>The iRate Team</p>
+        <p style="${emailStyles.text}">
+          Building connections is what makes iRate special. Log in to respond to this chat request and start a conversation!
+        </p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="#" style="${emailStyles.button}">
+            💬 Respond to Chat Request
+          </a>
+        </div>
+        <p style="${emailStyles.text}; color: #888888; font-size: 14px;">
+          You can manage your chat preferences in your account settings.
+        </p>
       </div>
-    `,
+      ${createFooter()}
+    `),
     text: (data: ChatRequestData) => `
-      New Chat Request
+      💬 NEW CHAT REQUEST
 
-      Hi ${data.name},
+      Hi ${data.name}!
 
       You have a new chat request from ${data.requesterName}.
 
-      Message: ${data.message}
+      Their message: "${data.message}"
 
-      Log in to your account to respond to this request.
+      Log in to respond to this chat request.
 
       Best regards,
       The iRate Team
@@ -299,7 +560,7 @@ export const emailTemplates = {
   } as NotificationTemplate<ChatRequestData>,
 };
 
-// SMS Templates
+// SMS Templates (unchanged for brevity)
 export const smsTemplates = {
   verification: {
     text: (data: SMSVerificationData) =>

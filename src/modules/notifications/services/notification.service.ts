@@ -67,27 +67,28 @@ export class NotificationService {
           },
         });
       } else {
-        // Use Gmail for production
-        const gmailUser = this.configService.get('GMAIL_USER');
-        const gmailPass = this.configService.get('GMAIL_APP_PASSWORD');
+        // Use custom SMTP for production
+        const smtpHost = this.configService.get('SMTP_HOST');
+        const smtpPort = Number(this.configService.get('SMTP_PORT'));
+        const smtpUser = this.configService.get('SMTP_USER');
+        const smtpPass = this.configService.get('SMTP_PASS');
 
-        if (!gmailUser || !gmailPass) {
-          throw new Error('Gmail credentials not configured');
+        if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
+          throw new Error('SMTP credentials not configured');
         }
 
         this.emailTransporter = nodemailer.createTransport({
-          service: 'gmail',
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpPort === 465, // true for 465, false for other ports
           auth: {
-            user: gmailUser,
-            pass: gmailPass,
+            user: smtpUser,
+            pass: smtpPass,
           },
           tls: {
             rejectUnauthorized: false,
           },
-          connectionTimeout: 10000, // 10 seconds
+          connectionTimeout: 10000,
           greetingTimeout: 10000,
           socketTimeout: 10000,
         });
@@ -211,15 +212,17 @@ export class NotificationService {
 
   private async sendSMS(to: string, message: string): Promise<void> {
     try {
+      const smsSenderId = this.configService.get('SMS_SENDER_ID');
       const twilioNumber = this.configService.get('TWILIO_PHONE_NUMBER');
+      const from = smsSenderId || twilioNumber;
 
-      if (!twilioNumber) {
-        throw new Error('Twilio phone number not configured');
+      if (!from) {
+        throw new Error('No SMS sender ID or Twilio phone number configured');
       }
 
       // In development, log the message instead of sending
       if (this.isDev) {
-        this.logger.log(`[DEV MODE] SMS would be sent to ${to} from ${twilioNumber}`);
+        this.logger.log(`[DEV MODE] SMS would be sent to ${to} from ${from}`);
         this.logger.log(`[DEV MODE] Message content: ${message}`);
         return;
       }
@@ -227,7 +230,7 @@ export class NotificationService {
       const result = await this.twilioClient.messages.create({
         body: message,
         to,
-        from: twilioNumber,
+        from,
       });
 
       this.logger.log(`SMS sent successfully to ${to} (SID: ${result.sid})`);

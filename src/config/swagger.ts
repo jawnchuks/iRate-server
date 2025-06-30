@@ -15,17 +15,14 @@ export const swaggerConfig = new DocumentBuilder()
   .addTag('subscriptions', 'Subscription endpoints')
   .addTag('media', 'Media management endpoints')
   .addTag('admin', 'Admin management endpoints')
-  .addBearerAuth(
-    {
-      type: 'http',
-      scheme: 'bearer',
-      bearerFormat: 'JWT',
-      name: 'JWT',
-      description: 'Enter JWT token',
-      in: 'header',
-    },
-    'JWT-auth',
-  )
+  .addBearerAuth({
+    type: 'http',
+    scheme: 'bearer',
+    bearerFormat: 'JWT',
+    name: 'JWT',
+    description: 'Enter JWT token',
+    in: 'header',
+  })
   .addServer('http://localhost:9000', 'Local Development')
   .addServer('https://irate-server.onrender.com', 'Production')
   .build();
