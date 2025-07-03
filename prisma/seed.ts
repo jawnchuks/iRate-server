@@ -11,7 +11,7 @@ import {
 
 const prisma = new PrismaClient();
 
-// Realistic user data
+// Realistic user data with updated African profile pictures
 const userData = [
   {
     email: 'chinedu.okafor@gmail.com',
@@ -36,10 +36,10 @@ const userData = [
     energyEmoji: '💻',
     passions: ['coding', 'mentoring', 'community service'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -65,10 +65,10 @@ const userData = [
     energyEmoji: '🩺',
     passions: ['healthcare', 'fashion', 'community outreach'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1494790108755-2616b612b2fd?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -94,10 +94,10 @@ const userData = [
     energyEmoji: '🎶',
     passions: ['music', 'photography', 'travel'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1524253482453-3fed8d2fe12b?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -123,10 +123,10 @@ const userData = [
     energyEmoji: '⚖️',
     passions: ['law', 'travel', 'cooking'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1519340333755-c1aa5571fd46?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1465101178521-c1a9136a3b41?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -152,10 +152,10 @@ const userData = [
     energyEmoji: '🔧',
     passions: ['engineering', 'chess', 'reading'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1566492031773-4f4e44671d66?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1519340333755-c1aa5571fd46?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -181,10 +181,10 @@ const userData = [
     energyEmoji: '💃',
     passions: ['fashion', 'dancing', 'blogging'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1465101178521-c1a9136a3b41?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -210,10 +210,10 @@ const userData = [
     energyEmoji: '🚀',
     passions: ['entrepreneurship', 'public speaking', 'mentoring'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1596815064285-45ed8a9c0463?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1594736797933-d0408c4beb0d?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1506863530036-1efeddceb993?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -239,10 +239,10 @@ const userData = [
     energyEmoji: '📈',
     passions: ['business', 'mentoring', 'football'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1524253482453-3fed8d2fe12b?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1528892952291-009c663ce843?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -268,10 +268,10 @@ const userData = [
     energyEmoji: '🔬',
     passions: ['science', 'volunteering', 'cooking'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1619895862022-09114b41f16f?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1505033575518-a36ea2ef75ae?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -297,10 +297,10 @@ const userData = [
     energyEmoji: '🏗️',
     passions: ['engineering', 'tech', 'music'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1618568925826-7c0b5d3e0e8f?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1519340333755-c1aa5571fd46?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1607346256330-dee7af15f7c5?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1609010697446-11f2155278f0?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -326,10 +326,10 @@ const userData = [
     energyEmoji: '🎨',
     passions: ['art', 'mentoring', 'travel'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1519340333755-c1aa5571fd46?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1586297135537-94bc9ba060aa?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1465101178521-c1a9136a3b41?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1614204424926-196a80bf0be8?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -355,10 +355,10 @@ const userData = [
     energyEmoji: '💼',
     passions: ['finance', 'volunteering', 'football'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1524253482453-3fed8d2fe12b?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1590031905406-f18a426d772d?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -384,10 +384,10 @@ const userData = [
     energyEmoji: '✍️',
     passions: ['writing', 'mentoring', 'fashion'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1590649880765-91d1970d46d5?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1624561172888-ac93c696e10c?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=400&h=400&fit=crop&crop=face',
     ],
   },
   {
@@ -413,10 +413,10 @@ const userData = [
     energyEmoji: '🚀',
     passions: ['tech', 'business', 'reading'],
     profilePicUrl:
-      'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1614204424926-196a80bf0be8?w=400&h=400&fit=crop&crop=face',
     additionalPhotos: [
-      'https://images.unsplash.com/photo-1519340333755-c1aa5571fd46?auto=format&fit=facearea&w=800&h=800&facepad=2',
-      'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=facearea&w=800&h=800&facepad=2',
+      'https://images.unsplash.com/photo-1609010697446-11f2155278f0?w=400&h=400&fit=crop&crop=face',
+      'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=400&h=400&fit=crop&crop=face',
     ],
   },
 ];
@@ -526,13 +526,13 @@ async function main() {
         totalRatings: Math.floor(Math.random() * 50),
         coins: Math.floor(Math.random() * 500) + 100, // 100-600 coins
         location: {
-          city: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia'][
+          city: ['Lagos', 'Abuja', 'Kano', 'Port Harcourt', 'Ibadan', 'Benin City'][
             Math.floor(Math.random() * 6)
           ],
-          country: user.nationality || 'United States',
+          country: user.nationality || 'Nigeria',
           coordinates: {
-            lat: (Math.random() - 0.5) * 180,
-            lng: (Math.random() - 0.5) * 360,
+            lat: 6.5244 + (Math.random() - 0.5) * 10, // Around Nigeria latitude
+            lng: 3.3792 + (Math.random() - 0.5) * 20, // Around Nigeria longitude
           },
         },
         notificationPreferences: {
@@ -544,8 +544,8 @@ async function main() {
           marketing: Math.random() > 0.6,
         },
         preferences: {
-          language: ['en', 'es', 'fr', 'de', 'zh'][Math.floor(Math.random() * 5)],
-          timezone: ['UTC', 'EST', 'PST', 'GMT+1', 'GMT+8'][Math.floor(Math.random() * 5)],
+          language: ['en', 'yo', 'ha', 'ig', 'fr'][Math.floor(Math.random() * 5)],
+          timezone: 'WAT',
           notifications: {
             email: Math.random() > 0.3,
             push: Math.random() > 0.2,
