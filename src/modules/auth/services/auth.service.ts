@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { UserRole } from '@prisma/client';
+import { Gender, UserRole } from '@prisma/client';
 import {
   OnboardingDto,
   InitiateAuthDto,
@@ -261,7 +261,36 @@ export class AuthService {
         throw new BadRequestException('At least one photo is required');
       }
 
-      // Update user with onboarding data
+      // Resolve photo URLs from upload IDs stored in Redis
+      const photoUrls: string[] = [];
+      for (const uploadIdOrUrl of dto.photoUrls) {
+        // Check if it's already a URL (starts with http)
+        if (uploadIdOrUrl.startsWith('http')) {
+          photoUrls.push(uploadIdOrUrl);
+        } else {
+          // It's an upload ID, retrieve the actual URL from Redis
+          const uploadData = await this.redisService.getUploadData(uploadIdOrUrl);
+          if (!uploadData || !uploadData.url) {
+            throw new BadRequestException(`Invalid upload ID: ${uploadIdOrUrl}`);
+          }
+          photoUrls.push(uploadData.url);
+        }
+      }
+
+      // Create profile photos first
+      const profilePhotos = await Promise.all(
+        photoUrls.map(async (url, index) => {
+          return this.prisma.userPhoto.create({
+            data: {
+              url,
+              userId: user.id,
+              isProfilePicture: index === 0, // First photo is profile picture
+            },
+          });
+        }),
+      );
+
+      // Update user with onboarding data and set profile picture
       const updatedUser = await this.prisma.user.update({
         where: { id: user.id },
         data: {
@@ -273,18 +302,30 @@ export class AuthService {
           valuesInOthers: dto.valuesInOthers,
           visibility: dto.visibility,
           onboardingComplete: true,
-          profilePhotos: {
-            create: dto.photoUrls.map((url, index) => ({
-              url,
-              isProfilePicture: index === 0,
-            })),
-          },
+          profilePictureId: profilePhotos[0].id, // Set the first photo as profile picture
+          // Calculate initial profile completion percentage
+          profileCompletionPercentage: await this.calculateProfileCompletion({
+            firstName: dto.firstName,
+            lastName: dto.lastName,
+            dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000),
+            gender: dto.gender,
+            selfDescription: dto.selfDescription,
+            valuesInOthers: dto.valuesInOthers,
+            photoCount: profilePhotos.length,
+          }),
         },
         include: {
           profilePhotos: true,
           profilePicture: true,
         },
       });
+
+      // Clean up Redis entries for upload IDs
+      for (const uploadIdOrUrl of dto.photoUrls) {
+        if (!uploadIdOrUrl.startsWith('http')) {
+          await this.redisService.deleteUploadData(uploadIdOrUrl);
+        }
+      }
 
       // Map to UserProfileDto (with profilePictureUrl and photos)
       const userDto = this.userService['mapUserToDto']
@@ -303,8 +344,33 @@ export class AuthService {
       if (error instanceof BadRequestException) {
         throw error;
       }
+      console.error('Onboarding completion error:', error);
       throw new InternalServerErrorException('Failed to complete onboarding');
     }
+  }
+
+  // Helper method to calculate profile completion percentage
+  private async calculateProfileCompletion(data: {
+    firstName?: string;
+    lastName?: string;
+    dob?: Date;
+    gender?: Gender;
+    selfDescription?: string[];
+    valuesInOthers?: string[];
+    photoCount?: number;
+  }): Promise<number> {
+    let completed = 0;
+    const total = 7; // Total required fields
+
+    if (data.firstName) completed++;
+    if (data.lastName) completed++;
+    if (data.dob) completed++;
+    if (data.gender) completed++;
+    if (data.selfDescription && data.selfDescription.length > 0) completed++;
+    if (data.valuesInOthers && data.valuesInOthers.length > 0) completed++;
+    if (data.photoCount && data.photoCount > 0) completed++;
+
+    return Math.round((completed / total) * 100);
   }
 
   async uploadPhoto(file: Express.Multer.File): Promise<PhotoUploadResponseDto> {

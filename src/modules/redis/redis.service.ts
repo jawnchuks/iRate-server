@@ -2,11 +2,6 @@ import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
-interface UploadData {
-  url: string;
-  timestamp: string;
-}
-
 @Injectable()
 export class RedisService implements OnModuleDestroy {
   private readonly redis: Redis;
@@ -113,25 +108,35 @@ export class RedisService implements OnModuleDestroy {
     return isValid;
   }
 
-  async storeUploadId(uploadId: string, data: UploadData): Promise<void> {
-    // Store the upload ID in a set
-    await this.redis.sadd(this.uploadIdsKey, uploadId);
-    // Store the upload data with the upload ID as key
-    await this.redis.set(
-      `${this.uploadDataPrefix}${uploadId}`,
-      JSON.stringify(data),
-      'EX',
-      3600, // 1 hour expiry
-    );
-  }
+  // async storeUploadId(uploadId: string, data: UploadData): Promise<void> {
+  //   // Store the upload ID in a set
+  //   await this.redis.sadd(this.uploadIdsKey, uploadId);
+  //   // Store the upload data with the upload ID as key
+  //   await this.redis.set(
+  //     `${this.uploadDataPrefix}${uploadId}`,
+  //     JSON.stringify(data),
+  //     'EX',
+  //     3600, // 1 hour expiry
+  //   );
+  // }
 
   async getUploadIds(): Promise<string[]> {
     return this.redis.smembers(this.uploadIdsKey);
   }
 
-  async getUploadData(uploadId: string): Promise<UploadData | null> {
-    const data = await this.redis.get(`${this.uploadDataPrefix}${uploadId}`);
+  async getUploadData(uploadId: string): Promise<{ url: string; timestamp: string } | null> {
+    const data = await this.redis.get(`upload:${uploadId}`);
     return data ? JSON.parse(data) : null;
+  }
+
+  async deleteUploadData(uploadId: string): Promise<void> {
+    await this.redis.del(`upload:${uploadId}`);
+  }
+
+  // Update the existing storeUploadId method to set expiration
+  async storeUploadId(uploadId: string, data: { url: string; timestamp: string }): Promise<void> {
+    // Store for 24 hours (86400 seconds)
+    await this.redis.setex(`upload:${uploadId}`, 86400, JSON.stringify(data));
   }
 
   async clearUploadIds(): Promise<void> {
