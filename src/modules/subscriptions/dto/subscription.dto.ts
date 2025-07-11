@@ -90,6 +90,10 @@ export class SubscriptionResponseDto {
   @ApiProperty({ description: 'Whether the subscription is auto-renewing' })
   @IsBoolean()
   autoRenew: boolean = false;
+
+  @ApiProperty({ description: 'Subscription tier', enum: ['STANDARD', 'PREMIUM'] })
+  @IsString()
+  tier: string = 'STANDARD';
 }
 
 export class PaymentHistoryDto {

@@ -26,3 +26,8 @@ Thank you for considering contributing! Here's how to help:
 ---
 
 We appreciate your help in making this project better! 
+
+
+------------------
+
+ 

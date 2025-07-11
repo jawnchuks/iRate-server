@@ -11,12 +11,6 @@ import { Prisma, User, UserRole } from '@prisma/client';
 import { UpdatePreferencesDto } from '../dto/user-preferences.dto';
 import { UpdatePrivacyDto } from '../dto/user-privacy.dto';
 
-interface UserWithPhotos extends User {
-  profilePhotos: { id: string; url: string; isProfilePicture: boolean; createdAt: Date }[];
-  profilePicture: { id: string; url: string; isProfilePicture: boolean; createdAt: Date } | null;
-  profession?: string;
-}
-
 interface UserPreferences {
   language?: string;
   timezone?: string;
@@ -141,7 +135,7 @@ export class UserService {
         OR: [
           { firstName: { contains: filter.search, mode: 'insensitive' } },
           { lastName: { contains: filter.search, mode: 'insensitive' } },
-          { username: { contains: filter.search, mode: 'insensitive' } },
+          { email: { contains: filter.search, mode: 'insensitive' } },
         ],
       };
     }
@@ -165,7 +159,10 @@ export class UserService {
     return { ...query, orderBy };
   }
 
-  async findAll(filter: UserFilterDto): Promise<PaginatedResponseDto<UserProfileDto>> {
+  async findAll(
+    currentUserId: string,
+    filter: UserFilterDto,
+  ): Promise<PaginatedResponseDto<UserProfileDto>> {
     const { page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
 
@@ -173,13 +170,11 @@ export class UserService {
       where: {
         isActive: true,
         deletedAt: null,
+        id: { not: currentUserId },
       },
       skip,
       take: limit,
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      include: { media: true }, // <-- Ensure media is included
     };
 
     query = await this.applyFilters(query, filter);
@@ -190,27 +185,30 @@ export class UserService {
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToDto(user));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
-  async getTrendingUsers(filter: UserFilterDto): Promise<PaginatedResponseDto<UserProfileDto>> {
+  async getTrendingUsers(
+    currentUserId: string,
+    filter: UserFilterDto,
+  ): Promise<PaginatedResponseDto<UserProfileDto>> {
     const { page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
+    // Optionally, sort by most ratings in the last 7 days for a more trending effect
+    // For now, keep as updatedAt, but exclude current user
     let query: Prisma.UserFindManyArgs = {
       where: {
         isActive: true,
         deletedAt: null,
         updatedAt: { gte: sevenDaysAgo },
+        id: { not: currentUserId },
       },
       skip,
       take: limit,
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      include: { media: true }, // <-- Ensure media is included
     };
 
     query = await this.applyFilters(query, filter);
@@ -221,11 +219,14 @@ export class UserService {
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToDto(user));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
-  async getTopRatedUsers(filter: UserFilterDto): Promise<PaginatedResponseDto<UserProfileDto>> {
+  async getTopRatedUsers(
+    currentUserId: string,
+    filter: UserFilterDto,
+  ): Promise<PaginatedResponseDto<UserProfileDto>> {
     const { page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
 
@@ -234,28 +235,32 @@ export class UserService {
         isActive: true,
         deletedAt: null,
         totalRatings: { gt: 0 },
+        id: { not: currentUserId },
       },
       skip,
       take: limit,
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
+      orderBy: {
+        averageRating: 'desc',
       },
+      include: { media: true }, // <-- Ensure media is included
     };
 
     query = await this.applyFilters(query, filter);
-    query = await this.applySorting(query, filter);
+    // Don't override orderBy if already set for top rated
 
     const [users, total] = await Promise.all([
       this.prisma.user.findMany(query),
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToDto(user));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
-  async getFreshFaces(filter: UserFilterDto): Promise<PaginatedResponseDto<UserProfileDto>> {
+  async getFreshFaces(
+    currentUserId: string,
+    filter: UserFilterDto,
+  ): Promise<PaginatedResponseDto<UserProfileDto>> {
     const { page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -265,13 +270,11 @@ export class UserService {
         isActive: true,
         deletedAt: null,
         createdAt: { gte: sevenDaysAgo },
+        id: { not: currentUserId },
       },
       skip,
       take: limit,
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      include: { media: true }, // <-- Ensure media is included
     };
 
     query = await this.applyFilters(query, filter);
@@ -282,26 +285,33 @@ export class UserService {
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToDto(user));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
-  async getUnratedUsers(filter: UserFilterDto): Promise<PaginatedResponseDto<UserProfileDto>> {
+  async getUnratedUsers(
+    currentUserId: string,
+    filter: UserFilterDto,
+  ): Promise<PaginatedResponseDto<UserProfileDto>> {
     const { page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
+
+    // Find users the current user has NOT rated, excluding self
+    const ratedByMe = await this.prisma.rating.findMany({
+      where: { raterId: currentUserId },
+      select: { targetId: true },
+    });
+    const ratedByMeIds = ratedByMe.map((rating) => rating.targetId);
 
     let query: Prisma.UserFindManyArgs = {
       where: {
         isActive: true,
         deletedAt: null,
-        totalRatings: 0,
+        id: { not: currentUserId, notIn: ratedByMeIds.length > 0 ? ratedByMeIds : undefined },
       },
       skip,
       take: limit,
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      include: { media: true }, // <-- Ensure media is included
     };
 
     query = await this.applyFilters(query, filter);
@@ -312,26 +322,36 @@ export class UserService {
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToDto(user));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
-  async getRatedUsers(filter: UserFilterDto): Promise<PaginatedResponseDto<UserProfileDto>> {
+  async getRatedUsers(
+    currentUserId: string,
+    filter: UserFilterDto,
+  ): Promise<PaginatedResponseDto<UserProfileDto>> {
     const { page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
+
+    // Find users the current user HAS rated, excluding self
+    const ratedByMe = await this.prisma.rating.findMany({
+      where: { raterId: currentUserId },
+      select: { targetId: true },
+    });
+    const ratedByMeIds = ratedByMe.map((rating) => rating.targetId);
 
     let query: Prisma.UserFindManyArgs = {
       where: {
         isActive: true,
         deletedAt: null,
-        totalRatings: { gt: 0 },
+        id: {
+          in:
+            ratedByMeIds.length > 0 ? ratedByMeIds.filter((id) => id !== currentUserId) : undefined,
+        },
       },
       skip,
       take: limit,
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      include: { media: true }, // <-- Ensure media is included
     };
 
     query = await this.applyFilters(query, filter);
@@ -342,7 +362,7 @@ export class UserService {
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToDto(user));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
@@ -372,10 +392,7 @@ export class UserService {
       },
       skip,
       take: limit,
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      include: { media: true }, // <-- Ensure media is included
     };
 
     query = await this.applyFilters(query, filter);
@@ -386,18 +403,19 @@ export class UserService {
       this.prisma.user.count({ where: query.where }),
     ]);
 
-    const userDtos = users.map((user) => this.mapUserToPublicDto(user as UserWithPhotos));
+    const userDtos = users.map((user) => this.mapUserToPublicDto(user));
     return this.getPaginatedResponse(userDtos, total, page, limit);
   }
 
-  private mapUserToDto(user: UserWithPhotos): UserProfileDto {
+  private mapUserToDto(
+    user: User & { media?: { url: string; type: string; caption?: string | null }[] },
+  ): UserProfileDto {
     return {
       id: user.id,
       email: user.email,
       phoneNumber: user.phoneNumber,
       firstName: user.firstName,
       lastName: user.lastName,
-      username: user.username,
       bio: user.bio,
       gender: user.gender,
       dob: user.dob,
@@ -409,22 +427,13 @@ export class UserService {
       languages: [], // To be populated from preferences
       zodiacSign: '', // To be populated from preferences
       relationshipStatus: '', // To be populated from preferences
-      lookingFor: '', // To be populated from preferences
-      vibeCheck: [], // To be populated from preferences
-      profilePhotos: user.profilePhotos.map((photo) => ({
-        id: photo.id,
-        url: photo.url,
-        isProfilePicture: photo.isProfilePicture,
-        createdAt: photo.createdAt,
-      })),
-      profilePicture: user.profilePicture
-        ? {
-            id: user.profilePicture.id,
-            url: user.profilePicture.url,
-            isProfilePicture: user.profilePicture.isProfilePicture,
-            createdAt: user.profilePicture.createdAt,
-          }
-        : null,
+      lookingFor: (user.lookingFor as string[]) || [], // To be populated from preferences
+      vibeCheckAnswers: user.vibeCheckAnswers as string,
+      height: user.height ?? undefined,
+      media: Array.isArray(user.media)
+        ? user.media.map((m) => ({ url: m.url, type: m.type, caption: m.caption ?? undefined }))
+        : [],
+      profilePhotos: [], // Keep for DTO compatibility
       averageRating: user.averageRating || 0,
       totalRatings: user.totalRatings || 0,
       roles: (user.roles as UserRole[]) || [],
@@ -475,12 +484,13 @@ export class UserService {
     };
   }
 
-  private mapUserToPublicDto(user: UserWithPhotos): PublicUserProfileDto {
+  private mapUserToPublicDto(
+    user: User & { media?: { url: string; type: string; caption?: string | null }[] },
+  ): PublicUserProfileDto {
     return {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
-      username: user.username,
       bio: user.bio,
       gender: user.gender,
       age: user.dob ? this.calculateAge(user.dob) : 0,
@@ -488,59 +498,30 @@ export class UserService {
       valuesInOthers: (user.valuesInOthers as string[]) || [],
       interests: (user.interests as string[]) || [],
       sharedInterests: [], // To be populated based on requesting user
-      profilePhotos: user.profilePhotos.map((photo) => ({
-        id: photo.id,
-        url: photo.url,
-        isProfilePicture: photo.isProfilePicture,
-        createdAt: photo.createdAt,
-      })),
-      profilePicture: user.profilePicture
-        ? {
-            id: user.profilePicture.id,
-            url: user.profilePicture.url,
-            isProfilePicture: user.profilePicture.isProfilePicture,
-            createdAt: user.profilePicture.createdAt,
-          }
-        : null,
+      profilePhotos: [], // No longer used, but required by DTO
       averageRating: user.averageRating || 0,
       totalRatings: user.totalRatings || 0,
       profileCompletionPercentage: user.profileCompletionPercentage || 0,
       isVerified: user.isVerified || false,
       createdAt: user.createdAt,
       lastActive: user.updatedAt,
+      media: Array.isArray(user.media)
+        ? user.media.map((m) => ({ url: m.url, type: m.type, caption: m.caption ?? undefined }))
+        : [],
     };
   }
 
   async findById(id: string): Promise<UserProfileDto> {
     const user = await this.prisma.user.findUnique({
       where: { id },
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      include: { media: true }, // Ensure media is included
     });
 
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    return this.mapUserToDto(user as UserWithPhotos);
-  }
-
-  async findByUsername(username: string): Promise<UserProfileDto> {
-    const user = await this.prisma.user.findUnique({
-      where: { username },
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
-    });
-
-    if (!user) {
-      throw new NotFoundException(`User with username ${username} not found`);
-    }
-
-    return this.mapUserToDto(user as UserWithPhotos);
+    return this.mapUserToDto(user);
   }
 
   async blockUser(userId: string, targetId: string): Promise<void> {

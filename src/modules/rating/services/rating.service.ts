@@ -1,6 +1,13 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../../../modules/prisma/prisma.service';
 import { RedisService } from '../../../modules/redis/redis.service';
+import { SubscriptionsService } from '../../subscriptions/services/subscriptions.service';
 import { CreateRatingDto } from '../dto/create-rating.dto';
 import { RatingResponseDto, RatingStatsDto } from '../dto/rating-response.dto';
 import { Rating } from '@prisma/client';
@@ -15,6 +22,8 @@ export class RatingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    @Inject(forwardRef(() => SubscriptionsService))
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async createRating(raterId: string, dto: CreateRatingDto): Promise<RatingResponseDto> {
@@ -43,22 +52,34 @@ export class RatingService {
       throw new NotFoundException('User to rate not found');
     }
 
-    // Check daily rating limit
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dailyRatings = await this.prisma.rating.count({
-      where: {
-        raterId,
-        createdAt: {
-          gte: today,
+    // Check subscription tier for rating limits
+    const subscription = await this.subscriptionsService.getUserSubscription(raterId);
+    const isPremium = !!(subscription && subscription.tier === 'PREMIUM');
+    if (!isPremium) {
+      // Standard users: enforce daily rating limit
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dailyRatings = await this.prisma.rating.count({
+        where: {
+          raterId,
+          createdAt: {
+            gte: today,
+          },
         },
-      },
-    });
-    if (dailyRatings >= this.MAX_DAILY_RATINGS) {
-      throw new BadRequestException('Daily rating limit reached');
+      });
+      if (dailyRatings >= this.MAX_DAILY_RATINGS) {
+        throw new BadRequestException(
+          'Daily rating limit reached. Upgrade to premium for unlimited ratings.',
+        );
+      }
     }
 
-    // Create the rating (no review)
+    // Ensure score is between 1 and 10
+    if (dto.score < 1 || dto.score > 10) {
+      throw new BadRequestException('Score must be between 1 and 10');
+    }
+
+    // Create the rating (no review/feedback)
     const rating = await this.prisma.rating.create({
       data: {
         raterId,
@@ -67,7 +88,7 @@ export class RatingService {
       },
     });
 
-    // Update user's average rating and total ratings
+    // Atomically update user's average rating and total ratings
     await this.updateUserRatingStats(dto.targetId);
 
     // Invalidate cache
@@ -179,6 +200,48 @@ export class RatingService {
     });
 
     return dailyRatings < this.MAX_DAILY_RATINGS;
+  }
+
+  async getUserRateLimit(userId: string): Promise<{
+    isPremium: boolean;
+    dailyLimit: number | null;
+    usedToday: number;
+    remaining: number | null;
+  }> {
+    const subscription = await this.subscriptionsService.getUserSubscription(userId);
+    const isPremium = !!(subscription && subscription.tier === 'PREMIUM');
+    let dailyLimit: number | null = null;
+    let usedToday = 0;
+    let remaining: number | null = null;
+    if (!isPremium) {
+      dailyLimit = this.MAX_DAILY_RATINGS;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      usedToday = await this.prisma.rating.count({
+        where: {
+          raterId: userId,
+          createdAt: {
+            gte: today,
+          },
+        },
+      });
+      remaining = Math.max(0, dailyLimit - usedToday);
+    } else {
+      usedToday = await this.prisma.rating.count({
+        where: {
+          raterId: userId,
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          },
+        },
+      });
+    }
+    return {
+      isPremium,
+      dailyLimit,
+      usedToday,
+      remaining,
+    };
   }
 
   private async updateUserRatingStats(userId: string): Promise<void> {

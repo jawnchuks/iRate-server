@@ -51,9 +51,10 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async findAll(
+    @CurrentUser('userId') userId: string,
     @Query() filter: UserFilterDto,
   ): Promise<BaseResponseDto<PaginatedResponseDto<UserProfileDto>>> {
-    const users = await this.userService.findAll(filter);
+    const users = await this.userService.findAll(userId, filter);
     return new BaseResponseDto(HttpStatus.OK, 'Users retrieved successfully', users);
   }
 
@@ -67,9 +68,10 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async getTrendingUsers(
+    @CurrentUser('userId') userId: string,
     @Query() filter: UserFilterDto,
   ): Promise<BaseResponseDto<PaginatedResponseDto<UserProfileDto>>> {
-    const users = await this.userService.getTrendingUsers(filter);
+    const users = await this.userService.getTrendingUsers(userId, filter);
     return new BaseResponseDto(HttpStatus.OK, 'Trending users retrieved successfully', users);
   }
 
@@ -83,9 +85,10 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async getTopRatedUsers(
+    @CurrentUser('userId') userId: string,
     @Query() filter: UserFilterDto,
   ): Promise<BaseResponseDto<PaginatedResponseDto<UserProfileDto>>> {
-    const users = await this.userService.getTopRatedUsers(filter);
+    const users = await this.userService.getTopRatedUsers(userId, filter);
     return new BaseResponseDto(HttpStatus.OK, 'Top rated users retrieved successfully', users);
   }
 
@@ -99,9 +102,10 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async getFreshFaces(
+    @CurrentUser('userId') userId: string,
     @Query() filter: UserFilterDto,
   ): Promise<BaseResponseDto<PaginatedResponseDto<UserProfileDto>>> {
-    const users = await this.userService.getFreshFaces(filter);
+    const users = await this.userService.getFreshFaces(userId, filter);
     return new BaseResponseDto(HttpStatus.OK, 'Fresh faces retrieved successfully', users);
   }
 
@@ -115,9 +119,10 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async getUnratedUsers(
+    @CurrentUser('userId') userId: string,
     @Query() filter: UserFilterDto,
   ): Promise<BaseResponseDto<PaginatedResponseDto<UserProfileDto>>> {
-    const users = await this.userService.getUnratedUsers(filter);
+    const users = await this.userService.getUnratedUsers(userId, filter);
     return new BaseResponseDto(HttpStatus.OK, 'Unrated users retrieved successfully', users);
   }
 
@@ -131,9 +136,10 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async getRatedUsers(
+    @CurrentUser('userId') userId: string,
     @Query() filter: UserFilterDto,
   ): Promise<BaseResponseDto<PaginatedResponseDto<UserProfileDto>>> {
-    const users = await this.userService.getRatedUsers(filter);
+    const users = await this.userService.getRatedUsers(userId, filter);
     return new BaseResponseDto(HttpStatus.OK, 'Rated users retrieved successfully', users);
   }
 
@@ -148,7 +154,7 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async getSuggestedUsers(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Query() filter: UserFilterDto,
   ): Promise<BaseResponseDto<PaginatedResponseDto<PublicUserProfileDto>>> {
     const users = await this.userService.getSuggestedUsers(userId, filter);
@@ -170,23 +176,6 @@ export class UserController {
     return new BaseResponseDto(HttpStatus.OK, 'User retrieved successfully', user);
   }
 
-  @Get('username/:username')
-  @ApiOperation({ summary: 'Get user by username' })
-  @ApiResponse({ status: 200, description: 'Returns the user', type: BaseResponseDto })
-  @ApiResponse({ status: 401, description: 'Unauthorized', type: BaseUnauthorizedErrorDto })
-  @ApiResponse({ status: 404, description: 'User not found', type: BaseNotFoundErrorDto })
-  @ApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: BaseInternalServerErrorDto,
-  })
-  async findByUsername(
-    @Param('username') username: string,
-  ): Promise<BaseResponseDto<UserProfileDto>> {
-    const user = await this.userService.findByUsername(username);
-    return new BaseResponseDto(HttpStatus.OK, 'User retrieved successfully', user);
-  }
-
   @Post(':id/block')
   @ApiOperation({ summary: 'Block a user' })
   @ApiResponse({ status: 200, description: 'User blocked successfully', type: BaseResponseDto })
@@ -198,7 +187,7 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async blockUser(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Param('id') targetId: string,
   ): Promise<BaseResponseDto<void>> {
     await this.userService.blockUser(userId, targetId);
@@ -216,7 +205,7 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async unblockUser(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Param('id') targetId: string,
   ): Promise<BaseResponseDto<void>> {
     await this.userService.unblockUser(userId, targetId);
@@ -235,7 +224,7 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async reportUser(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Param('id') targetId: string,
     @Body('reason') reason: string,
     @Body('details') details?: string,
@@ -260,7 +249,7 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async updatePreferences(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Body() preferences: UpdatePreferencesDto,
   ): Promise<BaseResponseDto<void>> {
     await this.userService.updatePreferences(userId, preferences);
@@ -283,7 +272,7 @@ export class UserController {
     type: BaseInternalServerErrorDto,
   })
   async updatePrivacy(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Body() privacy: UpdatePrivacyDto,
   ): Promise<BaseResponseDto<void>> {
     await this.userService.updatePrivacy(userId, privacy);

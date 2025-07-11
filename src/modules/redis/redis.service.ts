@@ -10,6 +10,8 @@ export class RedisService implements OnModuleDestroy {
   private readonly uploadIdsKey = 'upload_ids';
   private readonly uploadDataPrefix = 'upload_data:';
   private readonly logger = new Logger(RedisService.name);
+  private readonly BLACKLIST_PREFIX = 'blacklist:';
+  private readonly BLACKLIST_EXPIRY = 86400; // 24 hours
 
   constructor(private configService: ConfigService) {
     const redisUrl = this.configService.get('REDIS_URL');
@@ -169,6 +171,17 @@ export class RedisService implements OnModuleDestroy {
     const key = `otp_resend:${identifier}`;
     await this.incr(key);
     await this.expire(key, 3600); // 1 hour expiry
+  }
+
+  async blacklistToken(token: string, expiry: number = this.BLACKLIST_EXPIRY): Promise<void> {
+    const key = `${this.BLACKLIST_PREFIX}${token}`;
+    await this.set(key, '1', expiry);
+  }
+
+  async isTokenBlacklisted(token: string): Promise<boolean> {
+    const key = `${this.BLACKLIST_PREFIX}${token}`;
+    const result = await this.get(key);
+    return !!result;
   }
 
   // Add other Redis methods as needed

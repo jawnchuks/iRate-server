@@ -46,7 +46,7 @@ export class NotificationController {
   })
   async create(
     @Body() createNotificationDto: CreateNotificationDto,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<Notification>> {
     const notification = await this.notificationService.create(userId, createNotificationDto);
     return new BaseResponseDto<Notification>(
@@ -65,7 +65,7 @@ export class NotificationController {
     description: 'Internal server error',
     type: BaseInternalServerErrorDto,
   })
-  async findAll(@CurrentUser('sub') userId: string): Promise<BaseResponseDto<Notification[]>> {
+  async findAll(@CurrentUser('userId') userId: string): Promise<BaseResponseDto<Notification[]>> {
     const notifications = await this.notificationService.findAll(userId);
     return new BaseResponseDto<Notification[]>(
       HttpStatus.OK,
@@ -87,7 +87,7 @@ export class NotificationController {
     description: 'Internal server error',
     type: BaseInternalServerErrorDto,
   })
-  async getUnreadCount(@CurrentUser('sub') userId: string): Promise<BaseResponseDto<number>> {
+  async getUnreadCount(@CurrentUser('userId') userId: string): Promise<BaseResponseDto<number>> {
     const count = await this.notificationService.getUnreadCount(userId);
     return new BaseResponseDto<number>(
       HttpStatus.OK,
@@ -108,7 +108,7 @@ export class NotificationController {
   })
   async findOne(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<Notification>> {
     const notification = await this.notificationService.findOne(id, userId);
     return new BaseResponseDto<Notification>(
@@ -136,7 +136,7 @@ export class NotificationController {
   async update(
     @Param('id') id: string,
     @Body() updateNotificationDto: UpdateNotificationDto,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<Notification>> {
     const notification = await this.notificationService.update(id, userId, updateNotificationDto);
     return new BaseResponseDto<Notification>(
@@ -158,7 +158,7 @@ export class NotificationController {
   })
   async markAsRead(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<Notification>> {
     const notification = await this.notificationService.markAsRead(id, userId);
     return new BaseResponseDto<Notification>(
@@ -181,7 +181,7 @@ export class NotificationController {
     description: 'Internal server error',
     type: BaseInternalServerErrorDto,
   })
-  async markAllAsRead(@CurrentUser('sub') userId: string): Promise<BaseResponseDto<void>> {
+  async markAllAsRead(@CurrentUser('userId') userId: string): Promise<BaseResponseDto<void>> {
     await this.notificationService.markAllAsRead(userId);
     return new BaseResponseDto<void>(HttpStatus.OK, 'All notifications marked as read', undefined);
   }
@@ -202,7 +202,7 @@ export class NotificationController {
   })
   async remove(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<void>> {
     await this.notificationService.remove(id, userId);
     return new BaseResponseDto<void>(HttpStatus.OK, 'Notification deleted successfully', undefined);

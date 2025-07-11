@@ -14,29 +14,13 @@ import {
 import { Gender } from '@prisma/client';
 
 export class InitiateAuthDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     description: 'Email address for authentication',
     example: 'user@example.com',
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsEmail()
-  email?: string;
-
-  @ApiPropertyOptional({
-    description: 'Phone number for authentication (international format)',
-    example: '+1234567890',
-  })
-  @IsOptional()
-  @IsPhoneNumber()
-  phoneNumber?: string;
-
-  @ApiPropertyOptional({
-    description: 'Google OAuth token for authentication',
-    example: 'ya29.a0AfB_byC...',
-  })
-  @IsOptional()
-  @IsString()
-  googleToken?: string;
+  email!: string;
 }
 
 export class VerifyOtpDto {
@@ -75,7 +59,7 @@ export class OtpVerificationDto {
   })
   @IsNotEmpty()
   @IsEmail()
-  email: string = '';
+  email!: string;
 
   @ApiProperty({
     description: 'One-time password received via email',
@@ -85,17 +69,17 @@ export class OtpVerificationDto {
   @IsString()
   @MinLength(4)
   @MaxLength(6)
-  otp: string = '';
+  otp!: string;
 }
 
 export class OtpResendDto {
   @ApiProperty({
-    description: 'Email or phone number to resend OTP to',
+    description: 'Email to resend OTP to',
     example: 'user@example.com',
   })
   @IsNotEmpty()
-  @IsString()
-  identifier: string = '';
+  @IsEmail()
+  email!: string;
 }
 
 export class OnboardingDto {
@@ -103,26 +87,36 @@ export class OnboardingDto {
     description: 'Email address used for authentication',
     example: 'user@example.com',
   })
-  @IsOptional()
+  @IsNotEmpty()
   @IsEmail()
-  email: string = '';
+  email!: string;
 
   @ApiProperty({
-    description: 'Phone number used for authentication',
-    example: '+1234567890',
-  })
-  @IsOptional()
-  @IsPhoneNumber()
-  phoneNumber?: string;
-
-  @ApiProperty({
-    description: 'Array of uploaded photo URLs',
+    description: 'Array of uploaded photo URLs for onboarding',
     example: ['https://cloudinary.com/image/upload/v1234567890/photo.jpg'],
+    type: [String],
   })
   @IsNotEmpty()
   @IsArray()
   @IsString({ each: true })
-  photoUrls: string[] = [];
+  photoUrls!: string[];
+
+  @ApiProperty({
+    description: "User's profile picture URL",
+    example: 'https://cloudinary.com/image/upload/v1234567890/photo.jpg',
+  })
+  @IsNotEmpty()
+  @IsString()
+  profilePicture!: string;
+
+  @ApiProperty({
+    description: 'Array of uploaded media URLs (images, videos, etc.)',
+    example: ['https://cloudinary.com/image/upload/v1234567890/photo.jpg'],
+    type: [String],
+  })
+  @IsArray()
+  @IsString({ each: true })
+  media!: string[];
 
   @ApiProperty({
     description: "User's first name",
@@ -130,7 +124,7 @@ export class OnboardingDto {
   })
   @IsNotEmpty()
   @IsString()
-  firstName: string = '';
+  firstName!: string;
 
   @ApiProperty({
     description: "User's last name",
@@ -138,7 +132,7 @@ export class OnboardingDto {
   })
   @IsNotEmpty()
   @IsString()
-  lastName: string = '';
+  lastName!: string;
 
   @ApiProperty({
     description: "User's age",
@@ -146,7 +140,7 @@ export class OnboardingDto {
   })
   @IsNotEmpty()
   @IsNumber()
-  age: number = 0;
+  age!: number;
 
   @ApiProperty({
     description: "User's gender",
@@ -155,7 +149,7 @@ export class OnboardingDto {
   })
   @IsNotEmpty()
   @IsEnum(Gender)
-  gender: Gender = Gender.OTHER;
+  gender!: Gender;
 
   @ApiProperty({
     description: 'Array of self-description tags',
@@ -164,7 +158,7 @@ export class OnboardingDto {
   @IsNotEmpty()
   @IsArray()
   @IsString({ each: true })
-  selfDescription: string[] = [];
+  selfDescription!: string[];
 
   @ApiProperty({
     description: 'Array of values user looks for in others',
@@ -173,7 +167,7 @@ export class OnboardingDto {
   @IsNotEmpty()
   @IsArray()
   @IsString({ each: true })
-  valuesInOthers: string[] = [];
+  valuesInOthers!: string[];
 
   @ApiProperty({
     description: 'User visibility preferences',
@@ -184,22 +178,22 @@ export class OnboardingDto {
     },
   })
   @IsNotEmpty()
-  visibility: {
+  visibility!: {
     isVisibleInSearch: boolean;
     isVisibleToNearby: boolean;
     isVisibleToRecommended: boolean;
-  } = {
-    isVisibleInSearch: true,
-    isVisibleToNearby: true,
-    isVisibleToRecommended: true,
   };
-}
 
-export class RefreshTokenDto {
   @ApiProperty({
-    description: 'Refresh token for obtaining a new access token',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    description: 'User location object',
+    example: { lat: 6.5244, lng: 3.3792, state: 'Lagos', city: 'Lagos' },
   })
-  @IsString()
-  refreshToken!: string;
+  @IsNotEmpty()
+  location!: {
+    lat: number;
+    lng: number;
+    state: string;
+    city: string;
+    [key: string]: string | number;
+  };
 }

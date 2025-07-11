@@ -3,39 +3,27 @@ import {
   UnauthorizedException,
   BadRequestException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
-import { Gender, UserRole } from '@prisma/client';
-import {
-  OnboardingDto,
-  InitiateAuthDto,
-  RefreshTokenDto,
-  OtpVerificationDto,
-  OtpResendDto,
-} from '../dto/auth.dto';
-import { GoogleOAuthService } from './google-oauth.service';
+import { UserRole } from '@prisma/client';
+import { InitiateAuthDto, OtpVerificationDto, OtpResendDto, OnboardingDto } from '../dto/auth.dto';
 import { CloudinaryService } from 'src/common/utils/cloudinary';
-import {
-  AuthResponseDto,
-  PhotoUploadResponseDto,
-  OtpResendResponseDto,
-  MinimalUserDto,
-} from '../dto/auth-response.dto';
+import { PhotoUploadResponseDto } from '../dto/auth-response.dto';
+import { UserProfileDto } from '../../users/dto/user-response.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationService } from '../../notifications/services/notification.service';
 import { RedisService } from '../../redis/redis.service';
 import crypto from 'crypto';
 import { ProfileService } from '../../profile/services/profile.service';
 import { UserService } from '../../users/services/user.service';
+import { calculateProfileCompletionPercentage } from '../../../common/utils';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
-    private readonly googleOAuthService: GoogleOAuthService,
     private readonly notificationService: NotificationService,
     private readonly cloudinaryService: CloudinaryService,
     private readonly redisService: RedisService,
@@ -43,334 +31,153 @@ export class AuthService {
     private readonly userService: UserService,
   ) {}
 
-  async initiateAuth(dto: InitiateAuthDto): Promise<{
-    requestId: string;
-    isNewUser: boolean;
-    needsOnboarding: boolean;
-    otpSent: boolean;
-  }> {
-    try {
-      const { email, phoneNumber, googleToken } = dto;
+  async initiateAuth(dto: InitiateAuthDto): Promise<{ status: string }> {
+    const { email } = dto;
+    if (!email) throw new BadRequestException('Email is required');
+    // Always generate a verification token and send via email
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.redisService.storeOTP(email, token);
+    await this.notificationService.sendVerificationEmail(email, { name: 'User', otp: token });
+    return { status: 'Verification email sent' };
+  }
 
-      if (googleToken) {
-        const googleUser = await this.googleOAuthService.verifyToken(googleToken);
-        if (!googleUser || !googleUser.email) {
-          throw new UnauthorizedException('Invalid Google token');
-        }
-
-        const user = await this.prisma.user.upsert({
-          where: { email: googleUser.email },
-          update: {},
-          create: {
-            email: googleUser.email,
-            roles: [UserRole.USER],
+  async verifyOtp(
+    dto: OtpVerificationDto,
+  ): Promise<
+    { status: string } | { accessToken: string; refreshToken: string; user: UserProfileDto }
+  > {
+    const { email, otp } = dto;
+    const isValid = await this.redisService.verifyOTP(email, otp);
+    if (!isValid) throw new UnauthorizedException('Invalid or expired token');
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // New user: create and mark email as verified, no JWT yet
+      await this.prisma.user.create({
+        data: {
+          email,
+          emailVerified: true,
+          onboardingComplete: false,
+          roles: [UserRole.USER],
+          isVerified: true,
+          verificationStatus: 'VERIFIED',
+        },
+      });
+      return { status: 'Email verified. Please complete onboarding.' };
+    } else {
+      // Existing user: mark email as verified if not already
+      if (!user.emailVerified) {
+        await this.prisma.user.update({
+          where: { email },
+          data: {
             emailVerified: true,
+            isVerified: true,
+            verificationStatus: 'VERIFIED',
           },
         });
-
+      }
+      if (user.onboardingComplete) {
+        const payload = { userId: user.id, email: user.email, roles: user.roles };
+        const accessToken = this.jwtService.sign(payload);
+        const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
+        const userProfile = await this.userService.findById(user.id);
         return {
-          requestId: user.id,
-          isNewUser: !user.lastVerificationAt,
-          needsOnboarding: !user.onboardingComplete,
-          otpSent: false,
+          accessToken,
+          refreshToken,
+          user: userProfile,
         };
+      } else {
+        return { status: 'Email verified. Please complete onboarding.' };
       }
-
-      if (email) {
-        // Check if user exists
-        const existingUser = await this.prisma.user.findUnique({
-          where: { email },
-        });
-
-        // If user exists and has a valid session
-        if (existingUser?.lastVerificationAt) {
-          const lastVerificationDate = new Date(existingUser.lastVerificationAt);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-          // If session is still valid and user is verified
-          if (lastVerificationDate > thirtyDaysAgo && existingUser.emailVerified) {
-            return {
-              requestId: email,
-              isNewUser: false,
-              needsOnboarding: !existingUser.onboardingComplete,
-              otpSent: false,
-            };
-          }
-        }
-
-        try {
-          const otp = Math.floor(1000 + Math.random() * 9000).toString();
-          await this.redisService.storeOTP(email, otp);
-
-          await this.notificationService.sendVerificationEmail(email, {
-            name: existingUser?.firstName || 'User',
-            otp,
-          });
-
-          return {
-            requestId: email,
-            isNewUser: !existingUser,
-            needsOnboarding: existingUser ? !existingUser.onboardingComplete : true,
-            otpSent: true,
-          };
-        } catch (error) {
-          if (error instanceof Error) {
-            throw new InternalServerErrorException({
-              message: 'Failed to send verification email',
-              error: error.message,
-              details: 'Please check your email configuration and try again',
-            });
-          }
-          throw error;
-        }
-      }
-
-      if (phoneNumber) {
-        // Check if user exists
-        const existingUser = await this.prisma.user.findUnique({
-          where: { phoneNumber },
-        });
-
-        // If user exists and has a valid session
-        if (existingUser?.lastVerificationAt) {
-          const lastVerificationDate = new Date(existingUser.lastVerificationAt);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-          // If session is still valid and user is verified
-          if (lastVerificationDate > thirtyDaysAgo && existingUser.phoneVerified) {
-            return {
-              requestId: phoneNumber,
-              isNewUser: false,
-              needsOnboarding: !existingUser.onboardingComplete,
-              otpSent: false,
-            };
-          }
-        }
-
-        try {
-          await this.notificationService.sendVerificationSMS(phoneNumber, {});
-          return {
-            requestId: phoneNumber,
-            isNewUser: !existingUser,
-            needsOnboarding: existingUser ? !existingUser.onboardingComplete : true,
-            otpSent: false,
-          };
-        } catch (error) {
-          if (error instanceof Error) {
-            throw new InternalServerErrorException({
-              message: 'Failed to send verification SMS',
-              error: error.message,
-              details: 'Please check your SMS configuration and try again',
-            });
-          }
-          throw error;
-        }
-      }
-
-      throw new BadRequestException('Either email, phoneNumber, or googleToken must be provided');
-    } catch (error) {
-      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
-        throw error;
-      }
-
-      console.error('Auth initiation error:', error);
-
-      throw new InternalServerErrorException({
-        message: 'Authentication initiation failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        details: 'Please check the server logs for more information',
-      });
     }
   }
 
-  async verifyOtp(dto: OtpVerificationDto): Promise<AuthResponseDto> {
-    const { email, otp } = dto;
-
-    const isValid = await this.redisService.verifyOTP(email, otp);
-    if (!isValid) {
-      throw new UnauthorizedException('Invalid or expired OTP');
-    }
-
-    // Find or create user
-    const user = await this.prisma.user.upsert({
+  async completeOnboarding(
+    dto: OnboardingDto,
+  ): Promise<{ accessToken: string; refreshToken: string; user: UserProfileDto }> {
+    const {
+      email,
+      photoUrls,
+      firstName,
+      lastName,
+      age,
+      gender,
+      selfDescription,
+      valuesInOthers,
+      visibility,
+      location,
+    } = dto;
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) throw new NotFoundException('User not found');
+    // Set profilePicture to the first photo, if available
+    const profilePicture = photoUrls && photoUrls.length > 0 ? photoUrls[0] : null;
+    // Save user fields
+    await this.prisma.user.update({
       where: { email },
-      update: {
-        emailVerified: true,
-        lastVerificationAt: new Date(),
-      },
-      create: {
-        email,
-        emailVerified: true,
-        lastVerificationAt: new Date(),
-        roles: [UserRole.USER],
+      data: {
+        firstName,
+        lastName,
+        dob: new Date(Date.now() - age * 365 * 24 * 60 * 60 * 1000),
+        gender,
+        selfDescription,
+        valuesInOthers,
+        visibility,
+        onboardingComplete: true,
+        profilePicture,
+        isVerified: true,
+        verificationStatus: 'VERIFIED',
+        location: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: location.address,
+          city: location.city,
+          state: location.state,
+          country: location.country,
+        },
       },
     });
-
-    // Generate tokens
-    const { accessToken, refreshToken } = await this.generateTokens({
-      id: user.id,
-      email: user.email,
-      roles: user.roles,
-    });
-
-    // If user is not onboarded, return minimal user response
-    if (!user.onboardingComplete) {
-      return new AuthResponseDto(
-        accessToken,
-        refreshToken,
-        new MinimalUserDto({
-          id: user.id,
-          email: user.email ?? null,
-          onboardingComplete: user.onboardingComplete ?? false,
-          roles: Array.isArray(user.roles) ? user.roles.map(String) : [],
-        } as MinimalUserDto),
-      );
+    // Save media (profile photos)
+    if (photoUrls && photoUrls.length > 0) {
+      await this.prisma.media.createMany({
+        data: photoUrls.map((url) => ({ url, userId: user.id, type: 'IMAGE' })),
+        skipDuplicates: true,
+      });
     }
-
-    // If user is onboarded, add profileCompletion to user object
-    const profileCompletion = await this.profileService.getProfileCompletion(user.id);
-    const userWithPhotos = await this.prisma.user.findUnique({
+    // Fetch updated user with media for profile completion calculation
+    const updatedUserWithMedia = await this.prisma.user.findUnique({
       where: { id: user.id },
-      include: { profilePhotos: true, profilePicture: true },
+      include: { media: true },
     });
-    if (!userWithPhotos) throw new UnauthorizedException('User not found');
-    const userDto = this.userService['mapUserToDto']
-      ? this.userService['mapUserToDto'](userWithPhotos)
-      : userWithPhotos;
-    userDto.profileCompletionPercentage = profileCompletion.completionPercentage;
-    return new AuthResponseDto(accessToken, refreshToken, userDto);
-  }
-
-  async completeOnboarding(dto: OnboardingDto): Promise<AuthResponseDto> {
-    try {
-      // Find the user by email or phone
-      const user = await this.prisma.user.findFirst({
-        where: {
-          OR: [{ email: dto.email }, { phoneNumber: dto.phoneNumber }],
-        },
-      });
-
-      if (!user) {
-        throw new BadRequestException('User not found. Please complete verification first.');
-      }
-
-      // Ensure we have at least one photo
-      if (!dto.photoUrls || dto.photoUrls.length === 0) {
-        throw new BadRequestException('At least one photo is required');
-      }
-
-      // Resolve photo URLs from upload IDs stored in Redis
-      const photoUrls: string[] = [];
-      for (const uploadIdOrUrl of dto.photoUrls) {
-        // Check if it's already a URL (starts with http)
-        if (uploadIdOrUrl.startsWith('http')) {
-          photoUrls.push(uploadIdOrUrl);
-        } else {
-          // It's an upload ID, retrieve the actual URL from Redis
-          const uploadData = await this.redisService.getUploadData(uploadIdOrUrl);
-          if (!uploadData || !uploadData.url) {
-            throw new BadRequestException(`Invalid upload ID: ${uploadIdOrUrl}`);
-          }
-          photoUrls.push(uploadData.url);
-        }
-      }
-
-      // Create profile photos first
-      const profilePhotos = await Promise.all(
-        photoUrls.map(async (url, index) => {
-          return this.prisma.userPhoto.create({
-            data: {
-              url,
-              userId: user.id,
-              isProfilePicture: index === 0, // First photo is profile picture
-            },
-          });
-        }),
-      );
-
-      // Update user with onboarding data and set profile picture
-      const updatedUser = await this.prisma.user.update({
+    if (updatedUserWithMedia) {
+      const profileCompletionPercentage =
+        calculateProfileCompletionPercentage(updatedUserWithMedia);
+      await this.prisma.user.update({
         where: { id: user.id },
-        data: {
-          firstName: dto.firstName,
-          lastName: dto.lastName,
-          dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000), // Convert age to DOB
-          gender: dto.gender,
-          selfDescription: dto.selfDescription,
-          valuesInOthers: dto.valuesInOthers,
-          visibility: dto.visibility,
-          onboardingComplete: true,
-          profilePictureId: profilePhotos[0].id, // Set the first photo as profile picture
-          // Calculate initial profile completion percentage
-          profileCompletionPercentage: await this.calculateProfileCompletion({
-            firstName: dto.firstName,
-            lastName: dto.lastName,
-            dob: new Date(Date.now() - dto.age * 365 * 24 * 60 * 60 * 1000),
-            gender: dto.gender,
-            selfDescription: dto.selfDescription,
-            valuesInOthers: dto.valuesInOthers,
-            photoCount: profilePhotos.length,
-          }),
-        },
-        include: {
-          profilePhotos: true,
-          profilePicture: true,
-        },
+        data: { profileCompletionPercentage },
       });
-
-      // Clean up Redis entries for upload IDs
-      for (const uploadIdOrUrl of dto.photoUrls) {
-        if (!uploadIdOrUrl.startsWith('http')) {
-          await this.redisService.deleteUploadData(uploadIdOrUrl);
-        }
-      }
-
-      // Map to UserProfileDto (with profilePictureUrl and photos)
-      const userDto = this.userService['mapUserToDto']
-        ? this.userService['mapUserToDto'](updatedUser)
-        : updatedUser;
-
-      // Generate tokens
-      const { accessToken, refreshToken } = await this.generateTokens({
-        id: updatedUser.id,
-        email: updatedUser.email,
-        roles: updatedUser.roles,
-      });
-
-      return new AuthResponseDto(accessToken, refreshToken, userDto);
-    } catch (error) {
-      if (error instanceof BadRequestException) {
-        throw error;
-      }
-      console.error('Onboarding completion error:', error);
-      throw new InternalServerErrorException('Failed to complete onboarding');
     }
+    // After onboarding, return accessToken, refreshToken, and user
+    const payload = { userId: user.id, email: user.email, roles: user.roles };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
+    const userProfile = await this.userService.findById(user.id);
+    return {
+      accessToken,
+      refreshToken,
+      user: userProfile,
+    };
   }
 
-  // Helper method to calculate profile completion percentage
-  private async calculateProfileCompletion(data: {
-    firstName?: string;
-    lastName?: string;
-    dob?: Date;
-    gender?: Gender;
-    selfDescription?: string[];
-    valuesInOthers?: string[];
-    photoCount?: number;
-  }): Promise<number> {
-    let completed = 0;
-    const total = 7; // Total required fields
+  async logout(token: string): Promise<{ status: string }> {
+    await this.redisService.blacklistToken(token);
+    return { status: 'Logged out' };
+  }
 
-    if (data.firstName) completed++;
-    if (data.lastName) completed++;
-    if (data.dob) completed++;
-    if (data.gender) completed++;
-    if (data.selfDescription && data.selfDescription.length > 0) completed++;
-    if (data.valuesInOthers && data.valuesInOthers.length > 0) completed++;
-    if (data.photoCount && data.photoCount > 0) completed++;
-
-    return Math.round((completed / total) * 100);
+  async deactivateAccount(userId: string): Promise<{ status: string }> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: false, deactivatedAt: new Date() },
+    });
+    return { status: 'Account deactivated' };
   }
 
   async uploadPhoto(file: Express.Multer.File): Promise<PhotoUploadResponseDto> {
@@ -397,51 +204,31 @@ export class AuthService {
     }
   }
 
-  async refreshToken(dto: RefreshTokenDto): Promise<{ accessToken: string }> {
+  async refreshToken(token: string): Promise<{ accessToken: string }> {
+    // Validate the refresh token and check blacklist
+    const isBlacklisted = await this.redisService.isTokenBlacklisted(token);
+    if (isBlacklisted) throw new UnauthorizedException('Token is blacklisted');
+    let payload: { userId: string };
     try {
-      const payload = await this.jwtService.verifyAsync(dto.refreshToken);
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.sub },
-      });
-
-      if (!user) {
-        throw new UnauthorizedException('User not found');
-      }
-
-      const tokens = await this.generateTokens(user);
-      return { accessToken: tokens.accessToken };
+      payload = (await this.jwtService.verifyAsync(token)) as { userId: string };
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
-  }
-
-  async logout(): Promise<void> {
-    // If you store refresh tokens in Redis or DB, remove/blacklist them here
-    // Example: await this.redisService.del(`refresh_token:${userId}`);
-    // For stateless JWT, just let the token expire on the client
-    return;
-  }
-
-  private async generateTokens(user: { id: string; email: string | null; roles: UserRole[] }) {
-    const payload = { sub: user.id, email: user.email, roles: user.roles };
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(payload, { expiresIn: '7d' }),
-      this.jwtService.signAsync(payload, { expiresIn: '30d' }),
-    ]);
-
-    return {
-      accessToken,
-      refreshToken,
-    };
+    const user = await this.prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) throw new UnauthorizedException('User not found');
+    const newToken = this.jwtService.sign({
+      userId: user.id,
+      email: user.email,
+      roles: user.roles,
+    });
+    return { accessToken: newToken };
   }
 
   async getProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: {
-        profilePhotos: true,
-        profilePicture: true,
-      },
+      // Optionally include media: true if you want to return media
+      // include: { media: true },
     });
 
     if (!user) {
@@ -451,42 +238,12 @@ export class AuthService {
     return user;
   }
 
-  async resendOtp(dto: OtpResendDto): Promise<OtpResendResponseDto> {
-    const { identifier } = dto;
-
-    // Check if we can resend OTP
-    const canResend = await this.redisService.canResendOTP(identifier);
-    if (!canResend) {
-      throw new BadRequestException('Too many OTP resend attempts. Please try again later.');
-    }
-
-    // Generate new OTP
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    await this.redisService.storeOTP(identifier, otp);
-    await this.redisService.incrementResendCount(identifier);
-
-    // Send OTP via email or SMS
-    if (identifier.includes('@')) {
-      await this.notificationService.sendVerificationEmail(identifier, {
-        name: 'User',
-        otp,
-      });
-    } else {
-      await this.notificationService.sendVerificationSMS(identifier, { otp });
-    }
-
-    return new OtpResendResponseDto(identifier, 300);
-  }
-
-  async deactivateAccount(userId: string): Promise<void> {
-    // Set isActive to false and deactivatedAt to now
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        isActive: false,
-        deactivatedAt: new Date(),
-      },
-    });
-    // Optionally, clear sessions/tokens, send notification, etc.
+  async resendOtp(dto: OtpResendDto): Promise<{ status: string }> {
+    const { email } = dto;
+    if (!email) throw new BadRequestException('Email is required');
+    const token = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.redisService.storeOTP(email, token);
+    await this.notificationService.sendVerificationEmail(email, { name: 'User', otp: token });
+    return { status: 'Verification email resent' };
   }
 }
