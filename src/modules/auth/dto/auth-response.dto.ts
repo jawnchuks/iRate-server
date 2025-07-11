@@ -37,12 +37,6 @@ export class AuthResponseDto {
   accessToken: string;
 
   @ApiProperty({
-    description: 'JWT refresh token',
-    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  })
-  refreshToken: string;
-
-  @ApiProperty({
     description: 'User information (minimal for onboarding, full for onboarded users)',
     oneOf: [
       { $ref: '#/components/schemas/MinimalUserDto' },
@@ -51,9 +45,8 @@ export class AuthResponseDto {
   })
   user: MinimalUserDto | UserProfileDto;
 
-  constructor(accessToken: string, refreshToken: string, user: MinimalUserDto | UserProfileDto) {
+  constructor(accessToken: string, user: MinimalUserDto | UserProfileDto) {
     this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
     this.user = user;
   }
 }

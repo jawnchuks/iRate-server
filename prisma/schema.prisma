@@ -114,14 +114,15 @@ model User {
   settings                    Json                 @default("{\"theme\":\"system\",\"emailNotifications\":true,\"pushNotifications\":true,\"smsNotifications\":true}")
   onboardingComplete          Boolean              @default(false)
   profileCompletionPercentage Int                  @default(0)
-  profilePhotos               UserPhoto[]           @relation("UserPhotos")
-  profilePictureId            String? @unique
-  profilePicture              UserPhoto?           @relation("ProfilePicture", fields: [profilePictureId], references: [id])
+  profilePicture              String?
+  media                       Media[]
   createdAt                   DateTime             @default(now())
   updatedAt                   DateTime             @updatedAt
-  username                    String?              @unique
   bio                         String?
   interests                   String[]
+  languages                   String[]             // <-- Added field for user languages
+  lookingFor                  String[]             // <-- Added field for user relationship preferences
+  height                      String?              // <-- Added field for user height
   location                    Json?
   averageRating               Float                @default(0)
   totalRatings                Int                  @default(0)
@@ -133,7 +134,6 @@ model User {
   messages                    Message[]            @relation("UserMessages")
   notifications               Notification[]
   conversations               Conversation[]       @relation("ConversationParticipants")
-  media                       Media[]
   isActive                    Boolean              @default(true)
   deactivatedAt               DateTime?
   deletedAt                   DateTime?
@@ -142,11 +142,9 @@ model User {
   reports                     UserReport[]         @relation("ReporterToReported")
   reportedBy                  UserReport[]         @relation("ReportedToReporter")
   verificationStatus          VerificationStatus   @default(PENDING)
-  verificationAttempts        Int                @default(0)
   lastVerificationAt        DateTime?
   verificationExpiresAt     DateTime?
   isVerified                Boolean          @default(false)
-  verificationScore         Int                @default(0)
   trustScore                Int                @default(0)
   riskLevel                 Int                @default(0)
   lastRiskAssessment      DateTime?
@@ -167,7 +165,6 @@ model User {
   energyEmoji           String?
   passions             String[]
   vibeCheckAnswers      Json?
-  coins                 Int?
   @@index([email])
   @@index([isVerified])
   @@index([isActive])
@@ -184,7 +181,6 @@ model VerificationOTP {
 model Rating {
   id        String   @id @default(uuid())
   score     Int      @db.SmallInt
-  review    String?
   rater     User     @relation("RaterToRating", fields: [raterId], references: [id])
   raterId   String
   target    User     @relation("TargetToRating", fields: [targetId], references: [id])
@@ -300,16 +296,6 @@ model Call {
   endedAt        DateTime?
   metadata       Json?
   conversation   Conversation @relation(fields: [conversationId], references: [id])
-}
-
-model UserPhoto {
-  id                String   @id @default(uuid())
-  url               String
-  userId            String
-  isProfilePicture  Boolean  @default(false)
-  createdAt         DateTime @default(now())
-  user              User     @relation("UserPhotos", fields: [userId], references: [id])
-  profileOf         User?    @relation("ProfilePicture")
 }
 
 model BlockedUser {

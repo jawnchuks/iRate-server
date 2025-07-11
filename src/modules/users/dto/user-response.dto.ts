@@ -27,6 +27,17 @@ export class UserPhotoDto {
   createdAt!: Date;
 }
 
+export class MediaDto {
+  @ApiProperty({ description: 'Media URL', example: 'https://example.com/media.jpg' })
+  url!: string;
+
+  @ApiProperty({ description: 'Media type', example: 'IMAGE', enum: ['IMAGE', 'VIDEO', 'AUDIO'] })
+  type!: string;
+
+  @ApiProperty({ description: 'Media caption', example: 'Profile Picture', required: false })
+  caption?: string;
+}
+
 export class PublicUserProfileDto {
   @ApiProperty({
     description: 'User ID',
@@ -45,12 +56,6 @@ export class PublicUserProfileDto {
     example: 'Doe',
   })
   lastName!: string | null;
-
-  @ApiProperty({
-    description: "User's username",
-    example: 'johndoe',
-  })
-  username!: string | null;
 
   @ApiProperty({
     description: "User's bio",
@@ -106,13 +111,6 @@ export class PublicUserProfileDto {
   profilePhotos!: UserPhotoDto[];
 
   @ApiProperty({
-    description: "User's profile picture",
-    type: UserPhotoDto,
-    nullable: true,
-  })
-  profilePicture!: UserPhotoDto | null;
-
-  @ApiProperty({
     description: "User's average rating",
     example: 4.5,
     minimum: 0,
@@ -151,6 +149,13 @@ export class PublicUserProfileDto {
     example: '2024-01-01T00:00:00Z',
   })
   lastActive!: Date;
+
+  @ApiProperty({
+    description: "User's media files (images, videos, etc.)",
+    type: [MediaDto],
+    required: false,
+  })
+  media?: MediaDto[];
 }
 
 export class UserProfileDto {
@@ -183,12 +188,6 @@ export class UserProfileDto {
     example: 'Doe',
   })
   lastName!: string | null;
-
-  @ApiProperty({
-    description: "User's username",
-    example: 'johndoe',
-  })
-  username!: string | null;
 
   @ApiProperty({
     description: "User's bio",
@@ -279,42 +278,29 @@ export class UserProfileDto {
 
   @ApiProperty({
     description: "User's relationship preferences",
-    example: 'Looking for a serious relationship',
-    enum: ['Friendship', 'Casual Dating', 'Serious Relationship', 'Marriage', 'Not Specified'],
+    example: ['Friendship', 'Casual Dating', 'Serious Relationship'],
+    type: [String],
   })
-  lookingFor!: string;
+  lookingFor!: string[];
+
+  @ApiProperty({ description: "User's vibe check answer", required: false })
+  vibeCheckAnswers?: string;
+
+  @ApiProperty({ description: "User's height", required: false })
+  height?: string;
 
   @ApiProperty({
-    description: "User's vibe check responses",
-    example: [
-      {
-        question: "What's your ideal weekend?",
-        answer: 'Hiking and photography',
-      },
-      {
-        question: 'What makes you laugh?',
-        answer: 'Good jokes and funny memes',
-      },
-    ],
-    type: [Object],
+    description: "User's media files (images, videos, etc.)",
+    type: [MediaDto],
+    required: false,
   })
-  vibeCheck!: Array<{
-    question: string;
-    answer: string;
-  }>;
+  media?: MediaDto[];
 
   @ApiProperty({
     description: "User's profile photos",
     type: [UserPhotoDto],
   })
   profilePhotos!: UserPhotoDto[];
-
-  @ApiProperty({
-    description: "User's profile picture",
-    type: UserPhotoDto,
-    nullable: true,
-  })
-  profilePicture!: UserPhotoDto | null;
 
   @ApiProperty({
     description: "User's average rating",

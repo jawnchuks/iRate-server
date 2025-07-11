@@ -60,6 +60,26 @@ export class SubscriptionsController {
     );
   }
 
+  @Post('toggle-mock')
+  @ApiOperation({
+    summary: 'Toggle current user subscription between STANDARD and PREMIUM (mock/testing only)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Toggles the user subscription tier and returns the updated subscription',
+    type: () => BaseResponseDto<SubscriptionResponseDto>,
+  })
+  async toggleMockSubscription(
+    @Request() req: RequestWithUser,
+  ): Promise<BaseResponseDto<SubscriptionResponseDto>> {
+    const subscription = await this.subscriptionsService.toggleUserSubscription(req.user.id);
+    return new BaseResponseDto<SubscriptionResponseDto>(
+      HttpStatus.OK,
+      'Subscription tier toggled',
+      subscription,
+    );
+  }
+
   @Get('current')
   @ApiOperation({ summary: 'Get current user subscription' })
   @ApiResponse({

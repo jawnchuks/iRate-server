@@ -49,7 +49,9 @@ export class NotificationService {
     this.logger.log(
       `NotificationService initialized in ${this.isDev ? 'development' : 'production'} mode`,
     );
-    this.initializeEmailTransporter();
+    if (!this.isDev) {
+      this.initializeEmailTransporter();
+    }
     this.initializeTwilioClient();
   }
 
@@ -347,6 +349,16 @@ export class NotificationService {
 
   // Email notification methods
   async sendVerificationEmail(email: string, data: VerificationData): Promise<void> {
+    if (this.isDev) {
+      // Mock: generate and log a random 6-digit code
+      const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      this.logger.log('\n==========================================');
+      this.logger.log(`🔑 MOCK DEV OTP for ${email}: ${mockOtp}`);
+      this.logger.log('==========================================\n');
+      // Optionally, store in Redis for verification flow
+      await this.redisService.storeOTP(email, mockOtp);
+      return;
+    }
     try {
       const template = emailTemplates.verification;
       if (!template.html || !template.text) {

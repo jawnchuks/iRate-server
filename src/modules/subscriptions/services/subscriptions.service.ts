@@ -1,14 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Inject,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
 import { PaymentService } from '../../payment/services/payment.service';
-import { ChatService } from '../../chat/services/chat.service';
 import {
   CreateSubscriptionDto,
   SubscriptionResponseDto,
@@ -23,8 +16,6 @@ export class SubscriptionsService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly paymentService: PaymentService,
-    @Inject(forwardRef(() => ChatService))
-    private readonly chatService: ChatService,
   ) {}
 
   async getSubscriptionPlans(): Promise<SubscriptionPlanDto[]> {
@@ -132,6 +123,7 @@ export class SubscriptionsService {
       endDate: subscription.endDate,
       messagesUsed: subscription.messagesUsed,
       autoRenew: subscription.autoRenew,
+      tier: subscription.tier,
     };
   }
 
@@ -158,6 +150,7 @@ export class SubscriptionsService {
       endDate: subscription.endDate,
       messagesUsed: subscription.messagesUsed,
       autoRenew: subscription.autoRenew,
+      tier: subscription.tier,
     };
   }
 
@@ -240,5 +233,102 @@ export class SubscriptionsService {
         },
       });
     }
+  }
+
+  async toggleUserSubscription(userId: string): Promise<SubscriptionResponseDto> {
+    // Find the user's active subscription
+    let subscription = await this.prisma.subscription.findFirst({
+      where: {
+        userId,
+        status: SubscriptionStatus.ACTIVE,
+        endDate: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (subscription) {
+      // Toggle tier
+      const newTier = subscription.tier === 'PREMIUM' ? 'STANDARD' : 'PREMIUM';
+      // For mock: just use all benefits for PREMIUM, empty for STANDARD
+      const newBenefits =
+        newTier === 'PREMIUM'
+          ? [
+              'Messaging',
+              'AdvancedSearch',
+              'Bargaining',
+              'PublicCalls',
+              'Notifications',
+              'UnlimitedRatings',
+              'TargetedAds',
+              'LocationBasedAvailability',
+              'SpotlightBoost',
+              'TrendingBoost',
+              'CoinTransactions',
+              'LegalAwareness',
+              'MessageExpiration',
+              'ProfileLinkUpRating',
+              'GuaranteedProfits',
+              'NewInTownSpotlight',
+              'NoAds',
+            ]
+          : [];
+      subscription = await this.prisma.subscription.update({
+        where: { id: subscription.id },
+        data: {
+          tier: newTier,
+          benefits: newBenefits,
+        },
+      });
+    } else {
+      // No active subscription: create a mock PREMIUM subscription
+      const plan = await this.prisma.subscriptionPlan.findFirst({ where: { isActive: true } });
+      if (!plan) throw new NotFoundException('No active subscription plan found');
+      const now = new Date();
+      const endDate = new Date(now);
+      endDate.setMonth(now.getMonth() + 1);
+      subscription = await this.prisma.subscription.create({
+        data: {
+          userId,
+          planId: plan.id,
+          status: SubscriptionStatus.ACTIVE,
+          startDate: now,
+          endDate,
+          messagesUsed: 0,
+          autoRenew: false,
+          tier: 'PREMIUM',
+          benefits: [
+            'Messaging',
+            'AdvancedSearch',
+            'Bargaining',
+            'PublicCalls',
+            'Notifications',
+            'UnlimitedRatings',
+            'TargetedAds',
+            'LocationBasedAvailability',
+            'SpotlightBoost',
+            'TrendingBoost',
+            'CoinTransactions',
+            'LegalAwareness',
+            'MessageExpiration',
+            'ProfileLinkUpRating',
+            'GuaranteedProfits',
+            'NewInTownSpotlight',
+            'NoAds',
+          ],
+        },
+      });
+    }
+
+    return {
+      id: subscription.id,
+      userId: subscription.userId,
+      planId: subscription.planId,
+      status: subscription.status as SubscriptionStatus,
+      startDate: subscription.startDate,
+      endDate: subscription.endDate,
+      messagesUsed: subscription.messagesUsed,
+      autoRenew: subscription.autoRenew,
+      tier: subscription.tier,
+    };
   }
 }

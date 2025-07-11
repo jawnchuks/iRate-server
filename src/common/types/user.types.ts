@@ -1,4 +1,4 @@
-import { Gender, UserPhoto, Prisma, UserRole } from '@prisma/client';
+import { Gender, Prisma, UserRole } from '@prisma/client';
 
 export interface JwtPayload {
   sub: string;
@@ -30,12 +30,12 @@ export type UserProfile = {
   settings?: UserSettings | null;
   onboardingComplete?: boolean;
   profileCompletionPercentage?: number;
-  profilePhotos?: UserPhoto[];
-  profilePictureId?: string | null;
-  profilePicture?: UserPhoto | null;
+  profilePhotos?: string[] | null;
   username?: string | null;
   bio?: string | null;
   interests?: string[];
+  languages?: string[];
+  lookingFor?: string[];
   location?: Prisma.JsonValue | null;
   averageRating?: number;
   totalRatings?: number;
@@ -45,6 +45,8 @@ export type UserProfile = {
   isActive?: boolean;
   deactivatedAt?: Date | null;
   deletedAt?: Date | null;
+  vibeCheckAnswers?: string;
+  height?: string;
 };
 
 export interface UserPreferencesDto {

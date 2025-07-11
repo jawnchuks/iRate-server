@@ -1,12 +1,11 @@
 import {
   PrismaClient,
-  UserRole,
   Gender,
   SubscriptionPlanType,
   SubscriptionStatus,
   SubscriptionTier,
   User,
-  UserPhoto,
+  // Removed: UserPhoto,
 } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -23,7 +22,6 @@ const userData = [
     valuesInOthers: ['honesty', 'hard work', 'humor', 'kindness'],
     interests: ['football', 'tech', 'music', 'travel'],
     bio: 'Software engineer passionate about building solutions for Africa. Loves football and Afrobeats.',
-    username: 'chinedu_dev',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Igbo',
@@ -35,11 +33,47 @@ const userData = [
     mission: 'To empower African youth through technology',
     energyEmoji: '💻',
     passions: ['coding', 'mentoring', 'community service'],
-    profilePicUrl:
+    profilePicture:
       'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face',
+    languages: ['English', 'Igbo'],
+    lookingFor: ['Friendship', 'Networking'],
+    height: '180cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Lagos, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: false,
+      isContactPublic: false,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'system',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop&crop=face',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=600&h=800&fit=crop&crop=face',
+        type: 'IMAGE',
+      },
+      {
+        url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=600&h=800&fit=crop&crop=face',
+        type: 'IMAGE',
+      },
     ],
   },
   {
@@ -52,7 +86,6 @@ const userData = [
     valuesInOthers: ['empathy', 'integrity', 'ambition', 'patience'],
     interests: ['medicine', 'reading', 'fashion', 'volunteering'],
     bio: "Medical doctor and advocate for women's health. Loves fashion and helping others.",
-    username: 'amina_md',
     nationality: 'Nigerian',
     religion: 'Muslim',
     ethnicity: 'Hausa',
@@ -64,11 +97,44 @@ const userData = [
     mission: 'To improve healthcare access for women in Nigeria',
     energyEmoji: '🩺',
     passions: ['healthcare', 'fashion', 'community outreach'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1494790108755-2616b612b2fd?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146498/pexels-viscoseillusion-4006511_vdb1ce.jpg',
+    languages: ['English', 'Hausa'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '165cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Abuja, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146498/pexels-viscoseillusion-4006511_vdb1ce.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/video/upload/v1752146596/8026952-uhd_2160_4096_25fps_mfe5tp.mp4',
+        type: 'VIDEO',
+        caption: 'video clip',
+      },
     ],
   },
   {
@@ -81,7 +147,6 @@ const userData = [
     valuesInOthers: ['creativity', 'loyalty', 'humor', 'courage'],
     interests: ['music', 'photography', 'travel', 'basketball'],
     bio: 'Music producer and photographer. Always seeking new adventures and good vibes.',
-    username: 'tunde_beats',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Yoruba',
@@ -93,11 +158,39 @@ const userData = [
     mission: 'To inspire through music and art',
     energyEmoji: '🎶',
     passions: ['music', 'photography', 'travel'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146459/tamarcus-brown-29pFbI_D1Sc-unsplash_skk7hj.jpg',
+    languages: ['English', 'Yoruba'],
+    lookingFor: ['Collaboration', 'Networking'],
+    height: '175cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Ibadan, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'dark',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146344/pexels-cottonbro-9376467_bxp4lb.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
   {
@@ -110,7 +203,6 @@ const userData = [
     valuesInOthers: ['kindness', 'ambition', 'cheerfulness', 'support'],
     interests: ['law', 'debate', 'travel', 'cooking'],
     bio: 'Lawyer and food enthusiast. Loves to travel and debate on social issues.',
-    username: 'ifeoma_law',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Igbo',
@@ -122,11 +214,39 @@ const userData = [
     mission: 'To fight for justice and equality',
     energyEmoji: '⚖️',
     passions: ['law', 'travel', 'cooking'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146344/pexels-cottonbro-9376467_bxp4lb.jpg',
+    languages: ['English', 'Igbo'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '160cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Enugu, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&h=800&fit=crop&crop=face',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
   {
@@ -139,7 +259,6 @@ const userData = [
     valuesInOthers: ['dedication', 'curiosity', 'calmness', 'integrity'],
     interests: ['engineering', 'reading', 'football', 'chess'],
     bio: 'Mechanical engineer and chess lover. Enjoys solving problems and reading.',
-    username: 'baba_engineer',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Yoruba',
@@ -151,11 +270,44 @@ const userData = [
     mission: 'To innovate for a better Nigeria',
     energyEmoji: '🔧',
     passions: ['engineering', 'chess', 'reading'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1566492031773-4f4e44671d66?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1463453091185-61582044d556?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146535/osheen-turnbull-AN8wX45Rmew-unsplash_pmbi8s.jpg',
+    languages: ['English', 'Yoruba'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '185cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Ibadan, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'dark',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146321/pexels-luca-de-massis-83080741-8832601_hjykcz.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146535/osheen-turnbull-AN8wX45Rmew-unsplash_pmbi8s.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
   {
@@ -168,7 +320,6 @@ const userData = [
     valuesInOthers: ['creativity', 'support', 'fun', 'loyalty'],
     interests: ['fashion', 'blogging', 'travel', 'dancing'],
     bio: 'Fashion blogger and dancer. Loves to travel and meet new people.',
-    username: 'zainab_fashion',
     nationality: 'Nigerian',
     religion: 'Muslim',
     ethnicity: 'Hausa',
@@ -180,11 +331,44 @@ const userData = [
     mission: 'To inspire confidence through fashion',
     energyEmoji: '💃',
     passions: ['fashion', 'dancing', 'blogging'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146498/pexels-viscoseillusion-4006511_vdb1ce.jpg',
+    languages: ['English', 'Hausa'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '168cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Kano, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146455/pexels-viscoseillusion-4006513_vaerbb.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146498/pexels-viscoseillusion-4006511_vdb1ce.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
   {
@@ -197,7 +381,6 @@ const userData = [
     valuesInOthers: ['innovation', 'diligence', 'vision', 'friendship'],
     interests: ['entrepreneurship', 'reading', 'travel', 'public speaking'],
     bio: 'Entrepreneur and motivational speaker. Passionate about empowering women in business.',
-    username: 'uchechi_entrepreneur',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Igbo',
@@ -209,11 +392,44 @@ const userData = [
     mission: 'To inspire and empower women entrepreneurs',
     energyEmoji: '🚀',
     passions: ['entrepreneurship', 'public speaking', 'mentoring'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1596815064285-45ed8a9c0463?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1594736797933-d0408c4beb0d?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1506863530036-1efeddceb993?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146494/pexels-enginakyurt-1458876_jj82sh.jpg',
+    languages: ['English', 'Igbo'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '170cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Abuja, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'dark',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146475/pexels-dioclick-5373985_sqec6s.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/video/upload/v1752146381/8456422-hd_1080_1920_30fps_rpdpvi.mp4',
+        type: 'VIDEO',
+        caption: 'media clip',
+      },
     ],
   },
   {
@@ -226,7 +442,6 @@ const userData = [
     valuesInOthers: ['strategy', 'calmness', 'hard work', 'support'],
     interests: ['business', 'football', 'mentoring', 'reading'],
     bio: 'Business consultant and football enthusiast. Loves mentoring young professionals.',
-    username: 'segun_biz',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Yoruba',
@@ -238,11 +453,44 @@ const userData = [
     mission: 'To support the next generation of business leaders',
     energyEmoji: '📈',
     passions: ['business', 'mentoring', 'football'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1528892952291-009c663ce843?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752149484/pexels-mikhail-nilov-6834308_xel0iq.jpg',
+    languages: ['English', 'Yoruba'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '182cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Lagos, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146344/pexels-cottonbro-9376467_bxp4lb.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752149484/pexels-mikhail-nilov-6834308_xel0iq.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
   {
@@ -255,7 +503,6 @@ const userData = [
     valuesInOthers: ['compassion', 'curiosity', 'energy', 'optimism'],
     interests: ['science', 'volunteering', 'travel', 'cooking'],
     bio: 'Science teacher and volunteer. Loves to travel and cook new dishes.',
-    username: 'fatima_science',
     nationality: 'Nigerian',
     religion: 'Muslim',
     ethnicity: 'Hausa',
@@ -267,11 +514,49 @@ const userData = [
     mission: 'To make science fun and accessible',
     energyEmoji: '🔬',
     passions: ['science', 'volunteering', 'cooking'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1619895862022-09114b41f16f?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1505033575518-a36ea2ef75ae?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752149699/pexels-godisable-jacob-226636-908884_xqv6ts.jpg',
+    languages: ['English', 'Hausa'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '162cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Kano, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'dark',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146475/pexels-dioclick-5373985_sqec6s.jpg',
+        type: 'IMAGE',
+        caption: ' Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752149699/pexels-godisable-jacob-226636-908884_xqv6ts.jpg',
+        type: 'IMAGE',
+        caption: ' Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752149484/pexels-shvetsa-6555434_tmn37a.jpg',
+        type: 'IMAGE',
+        caption: ' Picture',
+      },
     ],
   },
   {
@@ -284,7 +569,6 @@ const userData = [
     valuesInOthers: ['innovation', 'friendship', 'analysis', 'adventure'],
     interests: ['engineering', 'tech', 'travel', 'music'],
     bio: 'Civil engineer and tech enthusiast. Loves music and exploring new places.',
-    username: 'emeka_engineer',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Igbo',
@@ -296,11 +580,39 @@ const userData = [
     mission: 'To build infrastructure for a better Nigeria',
     energyEmoji: '🏗️',
     passions: ['engineering', 'tech', 'music'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1618568925826-7c0b5d3e0e8f?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1607346256330-dee7af15f7c5?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1609010697446-11f2155278f0?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146530/bave-pictures-TOZYmlM4Amw-unsplash_d4utsa.jpg',
+    languages: ['English', 'Igbo'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '178cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Owerri, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1618568925826-7c0b5d3e0e8f?w=600&h=800&fit=crop&crop=face',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
   {
@@ -313,7 +625,6 @@ const userData = [
     valuesInOthers: ['cheerfulness', 'support', 'creativity', 'ambition'],
     interests: ['art', 'fashion', 'travel', 'mentoring'],
     bio: 'Artist and mentor. Loves to inspire others through creativity and travel.',
-    username: 'blessing_artist',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Ibibio',
@@ -325,11 +636,49 @@ const userData = [
     mission: 'To inspire creativity in young minds',
     energyEmoji: '🎨',
     passions: ['art', 'mentoring', 'travel'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1586297135537-94bc9ba060aa?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1614204424926-196a80bf0be8?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752146409/pexels-yaroslav-shuraev-6811728_yybevo.jpg',
+    languages: ['English', 'Ibibio'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '165cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Uyo, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'dark',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752149475/pexels-elsimage-2791823_qtqw3o.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752149475/pexels-elsimage-2791823_qtqw3o.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/video/upload/v1752146349/5805836-hd_720_1144_30fps_n30cg2.mp4',
+        type: 'VIDEO',
+        caption: 'media clip',
+      },
     ],
   },
   {
@@ -342,7 +691,6 @@ const userData = [
     valuesInOthers: ['discipline', 'curiosity', 'friendship', 'support'],
     interests: ['finance', 'reading', 'football', 'volunteering'],
     bio: 'Accountant and volunteer. Loves football and supporting community projects.',
-    username: 'abdul_accountant',
     nationality: 'Nigerian',
     religion: 'Muslim',
     ethnicity: 'Yoruba',
@@ -354,11 +702,39 @@ const userData = [
     mission: 'To promote financial literacy',
     energyEmoji: '💼',
     passions: ['finance', 'volunteering', 'football'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1590031905406-f18a426d772d?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://images.unsplash.com/photo-1595152772835-219674b2a8a6?w=600&h=800&fit=crop&crop=face',
+    languages: ['English', 'Yoruba'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '180cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Ilorin, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752149461/pexels-marcelodias-1970882_bq61s4.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
   {
@@ -371,7 +747,6 @@ const userData = [
     valuesInOthers: ['thoughtfulness', 'creativity', 'support', 'ambition'],
     interests: ['writing', 'fashion', 'mentoring', 'travel'],
     bio: 'Writer and mentor. Passionate about helping young women find their voice.',
-    username: 'ngozi_writer',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Igbo',
@@ -383,11 +758,49 @@ const userData = [
     mission: 'To inspire women through storytelling',
     energyEmoji: '✍️',
     passions: ['writing', 'mentoring', 'fashion'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1590649880765-91d1970d46d5?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1624561172888-ac93c696e10c?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1598300042247-d088f8ab3a91?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://res.cloudinary.com/do64gczom/image/upload/v1752149727/judeus-samson-0UECcInuCR4-unsplash_f0xzan.jpg',
+    languages: ['English', 'Igbo'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '168cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Port Harcourt, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'dark',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752146321/pexels-luca-de-massis-83080741-8832601_hjykcz.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/image/upload/v1752149727/judeus-samson-0UECcInuCR4-unsplash_f0xzan.jpg',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
+      {
+        url: 'https://res.cloudinary.com/do64gczom/video/upload/v1752146400/8410591-hd_1080_1920_25fps_th6zpn.mp4',
+        type: 'VIDEO',
+        caption: 'media clip',
+      },
     ],
   },
   {
@@ -400,7 +813,6 @@ const userData = [
     valuesInOthers: ['innovation', 'strategy', 'friendship', 'curiosity'],
     interests: ['tech', 'business', 'reading', 'travel'],
     bio: 'Tech entrepreneur and business strategist. Loves reading and exploring new ideas.',
-    username: 'olumide_tech',
     nationality: 'Nigerian',
     religion: 'Christian',
     ethnicity: 'Yoruba',
@@ -412,11 +824,39 @@ const userData = [
     mission: 'To drive innovation in Africa',
     energyEmoji: '🚀',
     passions: ['tech', 'business', 'reading'],
-    profilePicUrl:
-      'https://images.unsplash.com/photo-1614204424926-196a80bf0be8?w=400&h=400&fit=crop&crop=face',
-    additionalPhotos: [
-      'https://images.unsplash.com/photo-1609010697446-11f2155278f0?w=400&h=400&fit=crop&crop=face',
-      'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?w=400&h=400&fit=crop&crop=face',
+    profilePicture:
+      'https://images.unsplash.com/photo-1614204424926-196a80bf0be8?w=600&h=800&fit=crop&crop=face',
+    languages: ['English', 'Yoruba'],
+    lookingFor: ['Networking', 'Mentorship'],
+    height: '185cm',
+    location: { latitude: 6.5244, longitude: 3.3792, address: 'Lagos, Nigeria' },
+    privacy: {
+      isProfilePublic: true,
+      areRatingsPublic: true,
+      isLocationPublic: true,
+      isContactPublic: true,
+    },
+    preferences: {
+      language: 'en',
+      timezone: 'Africa/Lagos',
+      notifications: { email: true, push: true, sms: false },
+    },
+    notificationPreferences: { email: true, push: true, sms: false },
+    visibility: { isVisibleInSearch: true, isVisibleToNearby: true, isVisibleToRecommended: true },
+    settings: {
+      theme: 'light',
+      emailNotifications: true,
+      pushNotifications: true,
+      smsNotifications: false,
+    },
+    deactivatedAt: null,
+    deletedAt: null,
+    media: [
+      {
+        url: 'https://images.unsplash.com/photo-1614204424926-196a80bf0be8?w=600&h=800&fit=crop&crop=face',
+        type: 'IMAGE',
+        caption: 'Profile Picture',
+      },
     ],
   },
 ];
@@ -426,7 +866,8 @@ async function main() {
 
   // Clean up existing data
   console.log('🧹 Cleaning up existing data...');
-  await prisma.userPhoto.deleteMany();
+  await prisma.rating.deleteMany();
+  await prisma.media.deleteMany();
   await prisma.subscription.deleteMany();
   await prisma.subscriptionPlan.deleteMany();
   await prisma.user.deleteMany();
@@ -469,133 +910,17 @@ async function main() {
 
   // Create users
   console.log('👥 Creating users...');
-  const createdUsers: (User & { profilePhotos: UserPhoto[] })[] = [];
+  const createdUsers: User[] = [];
 
   for (let i = 0; i < userData.length; i++) {
-    const user = userData[i];
-    console.log(`   Creating user: ${user.firstName} ${user.lastName}`);
-
-    // Calculate profile completion percentage
-    let completionScore = 0;
-    const fields = [
-      user.firstName,
-      user.lastName,
-      user.dob,
-      user.gender,
-      user.bio,
-      user.interests?.length > 0,
-      user.selfDescription?.length > 0,
-      user.valuesInOthers?.length > 0,
-      user.nationality,
-      user.work,
-    ];
-    completionScore = Math.round((fields.filter(Boolean).length / fields.length) * 100);
-
-    const createdUser = await prisma.user.create({
-      data: {
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        username: user.username,
-        dob: user.dob,
-        gender: user.gender,
-        bio: user.bio,
-        selfDescription: user.selfDescription,
-        valuesInOthers: user.valuesInOthers,
-        interests: user.interests,
-        nationality: user.nationality,
-        religion: user.religion,
-        ethnicity: user.ethnicity,
-        zodiacSign: user.zodiacSign,
-        relationshipStatus: user.relationshipStatus,
-        school: user.school,
-        work: user.work,
-        biggestWin: user.biggestWin,
-        mission: user.mission,
-        energyEmoji: user.energyEmoji,
-        passions: user.passions,
-        roles: [UserRole.USER],
-        onboardingComplete: true,
-        emailVerified: true,
-        profileCompletionPercentage: completionScore,
-        isVerified: Math.random() > 0.3, // 70% are verified
-        verificationScore: Math.floor(Math.random() * 50) + 50, // 50-100
-        trustScore: Math.floor(Math.random() * 30) + 70, // 70-100
-        riskLevel: Math.floor(Math.random() * 20), // 0-20
-        averageRating: Math.random() * 2 + 3, // 3.0-5.0
-        totalRatings: Math.floor(Math.random() * 50),
-        coins: Math.floor(Math.random() * 500) + 100, // 100-600 coins
-        location: {
-          city: ['Lagos', 'Abuja', 'Kano', 'Port Harcourt', 'Ibadan', 'Benin City'][
-            Math.floor(Math.random() * 6)
-          ],
-          country: user.nationality || 'Nigeria',
-          coordinates: {
-            lat: 6.5244 + (Math.random() - 0.5) * 10, // Around Nigeria latitude
-            lng: 3.3792 + (Math.random() - 0.5) * 20, // Around Nigeria longitude
-          },
-        },
-        notificationPreferences: {
-          email: Math.random() > 0.3,
-          push: Math.random() > 0.2,
-          sms: Math.random() > 0.7,
-          newMessages: true,
-          chatRequests: true,
-          marketing: Math.random() > 0.6,
-        },
-        preferences: {
-          language: ['en', 'yo', 'ha', 'ig', 'fr'][Math.floor(Math.random() * 5)],
-          timezone: 'WAT',
-          notifications: {
-            email: Math.random() > 0.3,
-            push: Math.random() > 0.2,
-            sms: Math.random() > 0.7,
-          },
-        },
-        privacy: {
-          isProfilePublic: Math.random() > 0.2,
-          areRatingsPublic: Math.random() > 0.4,
-          isLocationPublic: Math.random() > 0.6,
-          isContactPublic: Math.random() > 0.8,
-        },
-        visibility: {
-          isVisibleInSearch: Math.random() > 0.1,
-          isVisibleToNearby: Math.random() > 0.3,
-          isVisibleToRecommended: Math.random() > 0.2,
-        },
-        settings: {
-          theme: ['light', 'dark', 'system'][Math.floor(Math.random() * 3)],
-          emailNotifications: Math.random() > 0.3,
-          pushNotifications: Math.random() > 0.2,
-          smsNotifications: Math.random() > 0.7,
-        },
-        profilePhotos: {
-          create: [
-            {
-              url: user.profilePicUrl,
-              isProfilePicture: true,
-            },
-            ...user.additionalPhotos.map((url) => ({
-              url,
-              isProfilePicture: false,
-            })),
-          ],
-        },
-      },
-      include: {
-        profilePhotos: true,
-      },
-    });
-
-    // Set profile picture ID
-    const profilePic = createdUser.profilePhotos.find((p) => p.isProfilePicture);
-    if (profilePic) {
-      await prisma.user.update({
-        where: { id: createdUser.id },
-        data: { profilePictureId: profilePic.id },
+    const { media, ...userFields } = userData[i];
+    const createdUser = await prisma.user.create({ data: userFields });
+    if (media && media.length > 0) {
+      await prisma.media.createMany({
+        data: media.map((m) => ({ ...m, userId: createdUser.id })),
+        skipDuplicates: true,
       });
     }
-
     createdUsers.push(createdUser);
   }
 
@@ -636,13 +961,46 @@ async function main() {
     });
   }
 
+  console.log('⭐ Creating ratings...');
+  for (let i = 0; i < createdUsers.length; i++) {
+    const rater = createdUsers[i];
+    // Pick 2 other users to rate (or as many as you want)
+    const others = createdUsers.filter((u) => u.id !== rater.id);
+    const toRate = others.sort(() => 0.5 - Math.random()).slice(0, 2);
+    for (const target of toRate) {
+      const score = Math.floor(Math.random() * 5) + 1; // 1-5 stars
+      await prisma.rating.create({
+        data: {
+          raterId: rater.id,
+          targetId: target.id,
+          score,
+        },
+      });
+      // Update totalRatings and averageRating for the target user
+      const ratings = await prisma.rating.findMany({
+        where: { targetId: target.id },
+        select: { score: true },
+      });
+      const totalRatings = ratings.length;
+      const averageRating =
+        totalRatings > 0 ? ratings.reduce((sum, r) => sum + r.score, 0) / totalRatings : 0;
+      await prisma.user.update({
+        where: { id: target.id },
+        data: {
+          totalRatings,
+          averageRating,
+        },
+      });
+    }
+  }
+
   console.log('✨ Seed completed successfully!');
   console.log(`📊 Created:`);
   console.log(`   • ${createdUsers.length} users`);
   console.log(`   • ${subscriberCount} subscriptions`);
   console.log(`   • 3 subscription plans`);
   console.log(
-    `   • ${createdUsers.reduce((acc, user) => acc + user.profilePhotos.length, 0)} profile photos`,
+    `   • ${createdUsers.reduce((acc) => acc + 1, 0)} profile pictures`, // Changed to 1 for profile picture
   );
 }
 

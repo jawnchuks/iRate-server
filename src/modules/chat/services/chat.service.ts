@@ -11,7 +11,7 @@ export type Participant = {
   id: string;
   firstName: string | null;
   lastName: string | null;
-  profilePicture?: { url?: string } | null;
+  profilePicture?: string | null;
 };
 
 interface ConversationWithParticipants {
@@ -67,7 +67,7 @@ export class ChatService {
         participantName: otherParticipant
           ? `${otherParticipant.firstName} ${otherParticipant.lastName}`
           : '',
-        participantPhoto: otherParticipant?.profilePicture?.url || undefined,
+        participantPhoto: otherParticipant?.profilePicture || undefined,
         lastMessage: lastMessage?.content || '',
         lastMessageAt: lastMessage?.createdAt || conv.updatedAt,
         unreadCount: 0,
@@ -414,7 +414,7 @@ export class ChatService {
       participantName: otherParticipant
         ? `${otherParticipant.firstName} ${otherParticipant.lastName}`
         : '',
-      participantPhoto: otherParticipant?.profilePicture?.url || undefined,
+      participantPhoto: otherParticipant?.profilePicture || undefined,
       lastMessage: lastMessage?.content || '',
       lastMessageAt: lastMessage?.createdAt || conversation.updatedAt,
       unreadCount: 0,

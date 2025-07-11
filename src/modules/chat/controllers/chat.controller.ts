@@ -51,7 +51,7 @@ export class ChatController {
   @ApiResponse({ status: 401, description: 'Unauthorized', type: UnauthorizedErrorDto })
   @ApiResponse({ status: 500, description: 'Internal server error', type: InternalServerErrorDto })
   async createChat(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Body('participantId') participantId: string,
   ): Promise<BaseResponseDto<ChatRequest>> {
     const chat = await this.chatService.createChatRequest(userId, participantId);
@@ -71,7 +71,7 @@ export class ChatController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized', type: UnauthorizedErrorDto })
   @ApiResponse({ status: 500, description: 'Internal server error', type: InternalServerErrorDto })
-  async getChats(@CurrentUser('sub') userId: string): Promise<BaseResponseDto<Chat[]>> {
+  async getChats(@CurrentUser('userId') userId: string): Promise<BaseResponseDto<Chat[]>> {
     const chats = await this.chatService.getConversations(userId);
     return new BaseResponseDto<Chat[]>(HttpStatus.OK, 'Chats retrieved successfully', chats);
   }
@@ -88,7 +88,7 @@ export class ChatController {
   @ApiResponse({ status: 500, description: 'Internal server error', type: InternalServerErrorDto })
   async getChat(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<Chat>> {
     const chat = await this.chatService.getConversation(id, userId);
     return new BaseResponseDto<Chat>(HttpStatus.OK, 'Chat retrieved successfully', chat);
@@ -106,7 +106,7 @@ export class ChatController {
   @ApiResponse({ status: 500, description: 'Internal server error', type: InternalServerErrorDto })
   async getMessages(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
   ): Promise<BaseResponseDto<Message[]>> {
@@ -131,7 +131,7 @@ export class ChatController {
   @ApiResponse({ status: 500, description: 'Internal server error', type: InternalServerErrorDto })
   async sendMessage(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Body() createMessageDto: CreateMessageDto,
   ): Promise<BaseResponseDto<Message>> {
     const message = await this.chatService.sendMessage(id, userId, createMessageDto);
@@ -150,7 +150,7 @@ export class ChatController {
   @ApiResponse({ status: 500, description: 'Internal server error', type: InternalServerErrorDto })
   async deleteChat(
     @Param('id') id: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<void>> {
     await this.chatService.deleteConversation(id, userId);
     return new BaseResponseDto<void>(HttpStatus.OK, 'Chat deleted successfully', undefined);
@@ -169,7 +169,7 @@ export class ChatController {
   async deleteMessage(
     @Param('id') id: string,
     @Param('messageId') messageId: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ): Promise<BaseResponseDto<void>> {
     await this.chatService.deleteMessage(id, messageId, userId);
     return new BaseResponseDto<void>(HttpStatus.OK, 'Message deleted successfully', undefined);
@@ -195,7 +195,7 @@ export class ChatController {
     type: ValidationErrorDto,
   })
   async uploadMedia(
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
     @Body('viewOnce') viewOnce: boolean,
     @UploadedFile() file: Express.Multer.File,
   ) {
@@ -240,7 +240,7 @@ export class ChatRequestController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async getChatRequests(@CurrentUser('sub') userId: string, @Query() pagination: PaginationDto) {
+  async getChatRequests(@CurrentUser('userId') userId: string, @Query() pagination: PaginationDto) {
     const requests = await this.chatService.getChatRequests(
       userId,
       pagination.page,
@@ -284,7 +284,10 @@ export class ChatRequestController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async createChatRequest(@CurrentUser('sub') userId: string, @Body() dto: CreateChatRequestDto) {
+  async createChatRequest(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: CreateChatRequestDto,
+  ) {
     const request = await this.chatService.createChatRequest(userId, dto.targetUserId);
     return new BaseResponseDto(HttpStatus.CREATED, 'Chat request created successfully', request);
   }
@@ -321,7 +324,7 @@ export class ChatRequestController {
   })
   async acceptChatRequest(
     @Param('requestId') requestId: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ) {
     const conversation = await this.chatService.acceptChatRequest(requestId, userId);
     return new BaseResponseDto(HttpStatus.OK, 'Chat request accepted successfully', conversation);
@@ -359,7 +362,7 @@ export class ChatRequestController {
   })
   async declineChatRequest(
     @Param('requestId') requestId: string,
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ) {
     const request = await this.chatService.declineChatRequest(requestId, userId);
     return new BaseResponseDto(HttpStatus.OK, 'Chat request declined successfully', request);

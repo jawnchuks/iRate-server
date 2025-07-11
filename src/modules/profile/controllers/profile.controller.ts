@@ -2,28 +2,22 @@ import {
   Controller,
   Get,
   Put,
-  Post,
   Body,
   UseGuards,
   HttpStatus,
+  Post,
+  UploadedFile,
   UseInterceptors,
+  Param,
+  Delete,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles, UserRole } from '../../auth/decorators/roles.decorator';
 import { ProfileService } from '../services/profile.service';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
-import { UpdateBasicInfoDto } from '../dto/update-basic-info.dto';
-import { UpdatePersonalDetailsDto } from '../dto/update-personal-details.dto';
-import { UpdateProfessionalInfoDto } from '../dto/update-professional-info.dto';
-import { UpdateInterestsPreferencesDto } from '../dto/update-interests-preferences.dto';
-import { UpdatePrivacySettingsDto } from '../dto/update-privacy-settings.dto';
-import { UpdateNotificationPreferencesDto } from '../dto/update-notification-preferences.dto';
-import { VerificationDocumentDto } from '../dto/verification-document.dto';
-import { VerificationSessionDto } from '../dto/verification-session.dto';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
   BaseResponseDto,
   BaseValidationErrorDto as ValidationErrorDto,
@@ -35,8 +29,8 @@ import {
 import { ApiResponse as SwaggerApiResponse } from '@nestjs/swagger';
 import { ApiResponse as CommonApiResponse } from '../../../common/decorators/api-response.decorator';
 import { UserProfileDto } from '../../users/dto/user-response.dto';
-import { VerificationType } from '@prisma/client';
-import { ProfileCompletionDto } from '../dto/profile-completion.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
 
 @ApiTags('profile')
 @Controller('profile')
@@ -72,8 +66,8 @@ export class ProfileController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async getProfile(@CurrentUser() user: { sub: string }) {
-    const profile = await this.profileService.getProfile(user.sub);
+  async getProfile(@CurrentUser() user: { userId: string }) {
+    const profile = await this.profileService.getProfile(user.userId);
     return new BaseResponseDto(HttpStatus.OK, 'Profile retrieved successfully', profile);
   }
 
@@ -110,443 +104,92 @@ export class ProfileController {
     type: InternalServerErrorDto,
   })
   async updateProfile(
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Body() updateProfileDto: UpdateProfileDto,
   ) {
-    const updatedProfile = await this.profileService.updateProfile(user.sub, updateProfileDto);
+    const updatedProfile = await this.profileService.updateProfile(user.userId, updateProfileDto);
     return new BaseResponseDto(HttpStatus.OK, 'Profile updated successfully', updatedProfile);
   }
 
-  @Put('basic-info')
+  @Post('upload-media')
   @Roles(UserRole.USER)
-  @ApiOperation({ summary: 'Update basic info', description: 'Update the user basic information' })
-  @CommonApiResponse(UserProfileDto)
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async updateBasicInfo(
-    @CurrentUser() user: { sub: string },
-    @Body() updateBasicInfoDto: UpdateBasicInfoDto,
+  @ApiOperation({ summary: 'Upload a single media file (image/video) to user profile' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({}), // In-memory, not saving to disk
+      fileFilter: (req, file, cb) => {
+        const allowedTypes = [
+          'image/jpeg',
+          'image/png',
+          'image/jpg',
+          'image/gif',
+          'video/mp4',
+          'video/quicktime',
+        ];
+        if (!allowedTypes.includes(file.mimetype)) {
+          return cb(new Error('Only image and video files are allowed!'), false);
+        }
+        cb(null, true);
+      },
+      limits: { fileSize: 20 * 1024 * 1024 }, // 20MB max per file
+    }),
+  )
+  async uploadMedia(
+    @CurrentUser() user: { userId: string },
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    const updatedProfile = await this.profileService.updateBasicInfo(user.sub, updateBasicInfoDto);
-    return new BaseResponseDto(HttpStatus.OK, 'Basic info updated successfully', updatedProfile);
+    if (!file || !file.buffer || file.size === 0) {
+      return {
+        statusCode: 400,
+        message: 'No file uploaded or file is empty. Please attach an image or video file.',
+      };
+    }
+    const imageMax = 5 * 1024 * 1024;
+    const videoMax = 20 * 1024 * 1024;
+    if (file.mimetype.startsWith('image/') && file.size > imageMax) {
+      return {
+        statusCode: 400,
+        message: `Image file "${file.originalname}" is too large. Max size is 5MB.`,
+      };
+    }
+    if (file.mimetype.startsWith('video/') && file.size > videoMax) {
+      return {
+        statusCode: 400,
+        message: `Video file "${file.originalname}" is too large. Max size is 20MB.`,
+      };
+    }
+    // Enforce max 6 media per user
+    const currentMediaCount = await this.profileService.getUserMediaCount(user.userId);
+    if (currentMediaCount >= 6) {
+      return {
+        statusCode: 400,
+        message:
+          'You have reached the maximum of 6 media uploads. Please delete an existing media to upload a new one.',
+      };
+    }
+    try {
+      const url = await this.profileService.uploadUserMedia(user.userId, file);
+      return { url };
+    } catch (err) {
+      return {
+        statusCode: 500,
+        message: `Failed to upload file "${file.originalname}": ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
   }
 
-  @Put('personal-details')
+  @Delete('media/:mediaId')
   @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Update personal details',
-    description: 'Update the user personal details',
-  })
-  @CommonApiResponse(UserProfileDto)
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async updatePersonalDetails(
-    @CurrentUser() user: { sub: string },
-    @Body() updatePersonalDetailsDto: UpdatePersonalDetailsDto,
-  ) {
-    const updatedProfile = await this.profileService.updatePersonalDetails(
-      user.sub,
-      updatePersonalDetailsDto,
-    );
-    return new BaseResponseDto(
-      HttpStatus.OK,
-      'Personal details updated successfully',
-      updatedProfile,
-    );
-  }
-
-  @Put('professional-info')
-  @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Update professional info',
-    description: 'Update the user professional information',
-  })
-  @CommonApiResponse(UserProfileDto)
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async updateProfessionalInfo(
-    @CurrentUser() user: { sub: string },
-    @Body() updateProfessionalInfoDto: UpdateProfessionalInfoDto,
-  ) {
-    const updatedProfile = await this.profileService.updateProfessionalInfo(
-      user.sub,
-      updateProfessionalInfoDto,
-    );
-    return new BaseResponseDto(
-      HttpStatus.OK,
-      'Professional info updated successfully',
-      updatedProfile,
-    );
-  }
-
-  @Put('interests-preferences')
-  @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Update interests and preferences',
-    description: 'Update the user interests and preferences',
-  })
-  @CommonApiResponse(UserProfileDto)
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async updateInterestsPreferences(
-    @CurrentUser() user: { sub: string },
-    @Body() updateInterestsPreferencesDto: UpdateInterestsPreferencesDto,
-  ) {
-    const updatedProfile = await this.profileService.updateInterestsPreferences(
-      user.sub,
-      updateInterestsPreferencesDto,
-    );
-    return new BaseResponseDto(
-      HttpStatus.OK,
-      'Interests and preferences updated successfully',
-      updatedProfile,
-    );
-  }
-
-  @Put('privacy-settings')
-  @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Update privacy settings',
-    description: 'Update the user privacy settings',
-  })
-  @CommonApiResponse(UserProfileDto)
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async updatePrivacySettings(
-    @CurrentUser() user: { sub: string },
-    @Body() updatePrivacySettingsDto: UpdatePrivacySettingsDto,
-  ) {
-    const updatedProfile = await this.profileService.updatePrivacySettings(
-      user.sub,
-      updatePrivacySettingsDto,
-    );
-    return new BaseResponseDto(
-      HttpStatus.OK,
-      'Privacy settings updated successfully',
-      updatedProfile,
-    );
-  }
-
-  @Put('notification-preferences')
-  @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Update notification preferences',
-    description: 'Update the user notification preferences',
-  })
-  @CommonApiResponse(UserProfileDto)
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async updateNotificationPreferences(
-    @CurrentUser() user: { sub: string },
-    @Body() updateNotificationPreferencesDto: UpdateNotificationPreferencesDto,
-  ) {
-    const updatedProfile = await this.profileService.updateNotificationPreferences(
-      user.sub,
-      updateNotificationPreferencesDto,
-    );
-    return new BaseResponseDto(
-      HttpStatus.OK,
-      'Notification preferences updated successfully',
-      updatedProfile,
-    );
-  }
-
-  @Get('completion')
-  @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Get profile completion status',
-    description: 'Get the user profile completion status and details',
-  })
-  @CommonApiResponse(ProfileCompletionDto)
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async getProfileCompletion(
-    @CurrentUser() user: { sub: string },
-  ): Promise<BaseResponseDto<ProfileCompletionDto>> {
-    const completion = await this.profileService.getProfileCompletion(user.sub);
-    return new BaseResponseDto<ProfileCompletionDto>(
-      HttpStatus.OK,
-      'Profile completion status retrieved successfully',
-      completion,
-    );
-  }
-
-  @Post('verification/initiate')
-  @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Initiate verification',
-    description: 'Start the verification process for the user',
-  })
-  @CommonApiResponse({ type: 'object' })
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async initiateVerification(@CurrentUser() user: { sub: string }, @Body('type') type: string) {
-    const session = await this.profileService.initiateVerification(
-      user.sub,
-      type as VerificationType,
-    );
-    return new BaseResponseDto(HttpStatus.OK, 'Verification initiated successfully', session);
-  }
-
-  @Post('verification/document')
-  @Roles(UserRole.USER)
-  @UseInterceptors(FileInterceptor('document'))
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({
-    summary: 'Submit verification document',
-    description: 'Submit a document for verification',
-  })
-  @CommonApiResponse({ type: 'object' })
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async submitVerificationDocument(
-    @CurrentUser() user: { sub: string },
-    @Body() dto: VerificationDocumentDto,
-  ) {
-    const document = await this.profileService.submitVerificationDocument(user.sub, dto);
-    return new BaseResponseDto(HttpStatus.OK, 'Document submitted successfully', document);
-  }
-
-  @Post('verification/complete')
-  @Roles(UserRole.USER)
-  @ApiOperation({
-    summary: 'Complete verification session',
-    description: 'Complete a verification session with the provided data',
-  })
-  @CommonApiResponse({ type: 'object' })
-  @SwaggerApiResponse({
-    status: 400,
-    description: 'Invalid input data',
-    type: ValidationErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 401,
-    description: 'User not authenticated',
-    type: UnauthorizedErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 403,
-    description: 'User does not have required role',
-    type: ForbiddenErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 404,
-    description: 'Profile not found',
-    type: NotFoundErrorDto,
-  })
-  @SwaggerApiResponse({
-    status: 500,
-    description: 'Internal server error',
-    type: InternalServerErrorDto,
-  })
-  async completeVerificationSession(
-    @CurrentUser() user: { sub: string },
-    @Body('sessionId') sessionId: string,
-    @Body() dto: VerificationSessionDto,
-  ) {
-    const session = await this.profileService.completeVerificationSession(user.sub, sessionId, dto);
-    return new BaseResponseDto(HttpStatus.OK, 'Verification completed successfully', session);
+  @ApiOperation({ summary: 'Delete a specific media item from user profile' })
+  async deleteMedia(@CurrentUser() user: { userId: string }, @Param('mediaId') mediaId: string) {
+    try {
+      await this.profileService.deleteUserMedia(user.userId, mediaId);
+      return { message: 'Media deleted successfully.' };
+    } catch (err) {
+      return {
+        statusCode: 500,
+        message: `Failed to delete media: ${err instanceof Error ? err.message : String(err)}`,
+      };
+    }
   }
 }

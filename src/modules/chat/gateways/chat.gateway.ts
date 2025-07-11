@@ -71,7 +71,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { chatId: string; message: CreateMessageDto },
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ) {
     try {
       const { chatId, message } = data;
@@ -108,7 +108,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleMessageRead(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { chatId: string },
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ) {
     try {
       await this.chatService.markMessagesAsRead(data.chatId, userId);
@@ -140,7 +140,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleTypingStart(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { chatId: string },
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ) {
     const conversation = await this.chatService.getRawConversation(data.chatId);
     if (!conversation) return;
@@ -159,7 +159,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleTypingStop(
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { chatId: string },
-    @CurrentUser('sub') userId: string,
+    @CurrentUser('userId') userId: string,
   ) {
     const conversation = await this.chatService.getRawConversation(data.chatId);
     if (!conversation) return;

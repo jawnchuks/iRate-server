@@ -66,9 +66,12 @@ export class RatingController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async rateUser(@CurrentUser() user: { sub: string }, @Body() createRatingDto: CreateRatingDto) {
+  async rateUser(
+    @CurrentUser() user: { userId: string },
+    @Body() createRatingDto: CreateRatingDto,
+  ) {
     try {
-      const rating = await this.ratingService.createRating(user.sub, createRatingDto);
+      const rating = await this.ratingService.createRating(user.userId, createRatingDto);
       return new BaseResponseDto(HttpStatus.CREATED, 'User rated successfully', rating);
     } catch (error) {
       if (error instanceof HttpException) {
@@ -198,9 +201,12 @@ export class RatingController {
     description: 'Internal server error',
     type: InternalServerErrorDto,
   })
-  async canRateUser(@CurrentUser() user: { sub: string }, @Param('userId') targetUserId: string) {
+  async canRateUser(
+    @CurrentUser() user: { userId: string },
+    @Param('userId') targetUserId: string,
+  ) {
     try {
-      const canRate = await this.ratingService.canRateUser(user.sub, targetUserId);
+      const canRate = await this.ratingService.canRateUser(user.userId, targetUserId);
       return new BaseResponseDto(HttpStatus.OK, 'Rating eligibility checked successfully', {
         canRate,
       });
@@ -213,5 +219,27 @@ export class RatingController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+
+  @Get('rate-limit')
+  @ApiOperation({
+    summary: 'Get current user rating limit',
+    description: "Returns the user's daily rating limit, usage, and premium status",
+  })
+  @SwaggerApiResponse({
+    status: 200,
+    description: 'User rating limit info',
+    schema: {
+      example: {
+        isPremium: false,
+        dailyLimit: 10,
+        usedToday: 3,
+        remaining: 7,
+      },
+    },
+  })
+  async getUserRateLimit(@CurrentUser('userId') userId: string) {
+    const info = await this.ratingService.getUserRateLimit(userId);
+    return new BaseResponseDto(HttpStatus.OK, 'User rate limit info', info);
   }
 }
